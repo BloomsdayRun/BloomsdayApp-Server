@@ -6,6 +6,8 @@ Running the server: Ensure you have Node.js and the server dependencies installe
 
 (basic_webserver and static_file_server are practice server applications with no database backend)
 
+(DynamoDBPythonScripts contains some scripts for creating, updating, and reading from a DynamoDB table; this is similar to what we'll be doing with the AWS iOS SDK)
+
 Good reading:  
 
 Intro to REST - http://rest.elkstein.org/  
