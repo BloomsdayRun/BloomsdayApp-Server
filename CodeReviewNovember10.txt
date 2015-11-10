@@ -1,0 +1,6 @@
+Reviewing:
+function level documentation
+braces on newline?
+
+Observing:
+hard to document storyboards/wireframes
