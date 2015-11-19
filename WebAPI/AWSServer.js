@@ -1,7 +1,23 @@
 //TODO: Authenticate connection with SSL
 
+//MARK: Dependencies
+//RESTful API
+var express  = require( 'express' );
+var app      = express();
+var mysql    = require('mysql');
+
+//Auth
+var bodyParser = require('body-parser'); //parse HTTP responses
+var port       = process.env.PORT || 8080;
+var passport   = require('passport'); //authentication middleware
+var flash      = require('connect-flash'); //flash messages
+var morgan       = require('morgan'); //post/get messages -> console
+var cookieParser = require('cookie-parser'); //read cookies
+var session      = require('express-session');
+
+// MARK: Config DBMS & auth
+// TODO: You may want to refactor DBMS code into separate file
 //Ensure you are running a MySQL server on localhost
-var mysql      = require('mysql');
 //NOTE: When deploying, don't push actual usernames/passwords to public repo
 var connection = mysql.createConnection({
     host     : 'localhost',
@@ -11,69 +27,29 @@ var connection = mysql.createConnection({
 });
 connection.connect();
 
-//Dependencies
-var express = require( 'express' );
-    bodyParser = require('body-parser');
+//EJS allows embedded Javascript in pages
+app.set('view engine', 'ejs');
+app.use(morgan('dev'));
 
-//app is the express server
-var app = express();
-
-//Parses the body of HTTP requests (may not be needed)
+//Parses the body of HTTP requests
 app.use(bodyParser.urlencoded({
     extended: true
 }));
+app.use(cookieParser());
 
-//Route different requests to different dbms actions
-// TODO: Good form would be to put router code in a separate JS file
-//GET runner data (spectator)
-app.get( '/api/runner/', function(request, response) {
-    // var id = request.params.id;
-    // console.log(id);
-    var id = request.query.id;
-    var query = "SELECT * from Runner where RunnerID = " + id + ";";
+//Configure passport
+require('./config/passport')(passport); // pass passport for configuration
+//I don't believe we'll use sessions in RESTful API (stateless)...
+//TODO: Refactor per final design
+app.use(session({ secret: "THIS IS THE SESSION SECRET" }));
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(flash());
 
-    connection.query(query, function(err, rows, fields) {
-        if (err) {
-            //TODO: Don't send error message to client in production
-            response.send("error retrieving from database: " + err);
-            // throw err; //throwing shuts down server
-        } else {
-            if (rows[0]) { //i.e., if the response is not null/undefined
-                console.log('Response: ', rows[0]);
-                response.send(rows[0]);     
-            } else {
-                response.send("No such user!");     
-            }
-        }
-    });
-});
-
-// POST runner data (runner)
-app.post( '/api/runner/', function(request, response) {
-    // console.log(request.query.id);
-    // console.log(request.query.position);
-    var id = request.query.id;
-    var latitude = request.query.latitude;
-    var longitude = request.query.longitude;
-    var timestamp = request.query.timestamp;
-    //TODO: There's probably a library for autoformatting SQL queries
-    //TODO: If this RunnerID already exists, alter, don't create a new row
-    var query = 
-        "INSERT INTO Runner (RunnerId, Latitude, Longitude, TimeStamp) VALUES ('" 
-        + id + "', '" + latitude + "', '" + longitude + "', '" + timestamp + "');";
-    console.log(query);
-    connection.query(query, function(err, rows, fields) {
-        if (err) {
-            response.send("error inserting into database: " + err);
-            // throw err; //TODO: Don't shutdown server on error
-        } else {
-            response.send("Insertion should be successful");
-        }
-    });
-});
+// Routes take passport for auth and connection to talk to DBMS
+require('./app/routes.js')(app, passport, connection); 
 
 //Start server
-var port = 8080;
 app.listen( port, function() {
     console.log(app.settings.env, "server running at http://localhost:", port);
 });
