@@ -13,6 +13,7 @@
         "passport-facebook" : "~1.0.2",
         "connect-flash" : "~0.1.1",     
         "bcrypt-nodejs" : "latest",
+        "fbgraph" : "latest",
 
         "morgan": "~1.0.0",
         "body-parser": "~1.0.0",

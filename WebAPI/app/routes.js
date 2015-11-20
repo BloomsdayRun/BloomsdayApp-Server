@@ -1,8 +1,10 @@
 module.exports = function(app, passport, connection) {
+    var graph = require('fbgraph');
 
-    // MARK: Facebook routs
+    // MARK: Facebook routes
     app.get('/auth/facebook', passport.authenticate('facebook', 
-        { scope : 'email',
+        // Scope determines permissions associated with token
+        { scope: ['email', 'user_friends'],
           session : false
          }
         )
@@ -51,26 +53,37 @@ module.exports = function(app, passport, connection) {
 
     // POST runner data (runner)
     app.post( '/api/runner/', function(request, response) {
-        // console.log(request.query.id);
-        // console.log(request.query.position);
-        var id = request.query.id;
-        var latitude = request.query.latitude;
-        var longitude = request.query.longitude;
-        var timestamp = request.query.timestamp;
-        //TODO: There's probably a library for autoformatting SQL queries
-        //TODO: If this RunnerID already exists, alter, don't create a new row
-        var query = 
-            "INSERT INTO Runner (RunnerId, Latitude, Longitude, TimeStamp) VALUES ('" 
-            + id + "', '" + latitude + "', '" + longitude + "', '" + timestamp + "');";
-        console.log(query);
-        connection.query(query, function(err, rows, fields) {
-            if (err) {
-                response.send("error inserting into database: " + err);
-                // throw err; //TODO: Don't shutdown server on error
-            } else {
-                response.send("Insertion should be successful");
-            }
-        });
+        // console.log(request.headers);
+        // TODO: May need to extend token lifespan
+        console.log(request.get("access-token"));
+        var accessToken = request.get("access-token");
+        graph.setAccessToken(accessToken);
+        graph.get("me?fields=id,name,friends", function(err, res) {
+            console.log(res);
+            var tokenId = res.id;
+            console.log(tokenId);
+
+            var id = request.query.id; //TODO: Compare id =?= tokenId
+            var latitude = request.query.latitude;
+            var longitude = request.query.longitude;
+            var timestamp = request.query.timestamp;
+            //TODO: There's probably a library for autoformatting SQL queries
+            var query = 
+                "INSERT INTO Runner (RunnerId, Latitude, Longitude, TimeStamp) VALUES ('" 
+                + tokenId + "', '" + latitude + "', '" + longitude + "', '" + timestamp + "') ON DUPLICATE KEY UPDATE Latitude=VALUES(Latitude), Longitude=VALUES(Longitude), Timestamp=VALUES(Timestamp);";
+
+            console.log(query);
+            connection.query(query, function(err, rows, fields) {
+                if (err) {
+                    response.send("error inserting into database: " + err);
+                    // throw err; //TODO: Don't shutdown server on error
+                } else {
+                    response.send("Insertion should be successful");
+                }
+            });
+
+        });  
+
     });
 
 }

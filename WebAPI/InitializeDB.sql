@@ -13,4 +13,4 @@ GRANT ALL PRIVILEGES ON bloomsday.* TO USERNAME@localhost;
 FLUSH PRIVILEGES;
 
 -- Create all necessary tables for database (only one to-date)
-CREATE TABLE Runner ( RunnerID int, Latitude float, Longitude float, Timestamp int );
+CREATE TABLE Runner ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY, Latitude float, Longitude float, Timestamp int );
