@@ -1,4 +1,5 @@
 module.exports = function(app, passport, connection) {
+    //TODO: Enhance security with app-secret proof
     var graph = require('fbgraph');
 
     // MARK: Facebook routes
@@ -33,22 +34,39 @@ module.exports = function(app, passport, connection) {
         // var id = request.params.id;
         // console.log(id);
         var id = request.query.id;
-        var query = "SELECT * from Runner where RunnerID = " + id + ";";
+        //TODO: There may be a race condition with a global graph object
+        var accessToken = request.get("access-token");
+        graph.setAccessToken(accessToken);
 
-        connection.query(query, function(err, rows, fields) {
-            if (err) {
-                //TODO: Don't send error message to client in production
-                response.send("error retrieving from database: " + err);
-                // throw err; //throwing shuts down server
+        graph.get("me/friends/" + id, function(err, res) {
+            //Check if user is friends with id by seeing if query is non-empty
+            //TODO: Find a more robust way to do this
+            var data = res.data;
+            if (data) {
+                var tokenId = console.log(res.data[0].id);
+                var query = "SELECT * from Runner where RunnerID = " + id + ";";
+
+                connection.query(query, function(err, rows, fields) {
+                    if (err) {
+                        //TODO: Don't send error message to client in production
+                        response.send("error retrieving from database: " + err);
+                        // throw err; //throwing shuts down server
+                    } else {
+                        if (rows[0]) { //i.e., if the response is not null/undefined
+                            console.log('Response: ', rows[0]);
+                            response.send(rows[0]);     
+                        } else {
+                            response.send("No such user!");     
+                        }
+                    }
+                });                
             } else {
-                if (rows[0]) { //i.e., if the response is not null/undefined
-                    console.log('Response: ', rows[0]);
-                    response.send(rows[0]);     
-                } else {
-                    response.send("No such user!");     
-                }
+                //they must not be friends
+                response.send("Unauthorized or nonexistent user");
             }
+
         });
+
     });
 
     // POST runner data (runner)

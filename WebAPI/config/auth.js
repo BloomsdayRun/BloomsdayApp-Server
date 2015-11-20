@@ -1,5 +1,6 @@
 //App ID and Secret used for Facebook auth
 
+//TODO: Refactor into a Constants.js file
 module.exports = {
 
     'facebookAuth' : {
