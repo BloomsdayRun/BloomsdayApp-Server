@@ -1,6 +1,5 @@
 module.exports = function(app, passport, connection) {
     //TODO: Enhance security with app-secret proof
-    var graph = require('fbgraph');
 
     // MARK: Facebook routes
     app.get('/auth/facebook', passport.authenticate('facebook', 
@@ -35,8 +34,9 @@ module.exports = function(app, passport, connection) {
         // console.log(id);
         var id = request.query.id;
         //TODO: There may be a race condition with a global graph object
+        var graph = require('fbgraph');
         var accessToken = request.get("access-token");
-        graph.setAccessToken(accessToken);
+        // graph.setAccessToken(accessToken);
 
         graph.get("me/friends/" + id, function(err, res) {
             //Check if user is friends with id by seeing if query is non-empty
@@ -74,6 +74,7 @@ module.exports = function(app, passport, connection) {
         // console.log(request.headers);
         // TODO: May need to extend token lifespan
         console.log(request.get("access-token"));
+        var graph = require('fbgraph');
         var accessToken = request.get("access-token");
         graph.setAccessToken(accessToken);
         graph.get("me?fields=id,name,friends", function(err, res) {
@@ -85,20 +86,25 @@ module.exports = function(app, passport, connection) {
             var latitude = request.query.latitude;
             var longitude = request.query.longitude;
             var timestamp = request.query.timestamp;
-            //TODO: There's probably a library for autoformatting SQL queries
-            var query = 
-                "INSERT INTO Runner (RunnerId, Latitude, Longitude, TimeStamp) VALUES ('" 
-                + tokenId + "', '" + latitude + "', '" + longitude + "', '" + timestamp + "') ON DUPLICATE KEY UPDATE Latitude=VALUES(Latitude), Longitude=VALUES(Longitude), Timestamp=VALUES(Timestamp);";
+            if (!err) {
+                //TODO: There's probably a library for autoformatting SQL queries
+                var query = 
+                    "INSERT INTO Runner (RunnerId, Latitude, Longitude, TimeStamp) VALUES ('" 
+                    + tokenId + "', '" + latitude + "', '" + longitude + "', '" + timestamp + "') ON DUPLICATE KEY UPDATE Latitude=VALUES(Latitude), Longitude=VALUES(Longitude), Timestamp=VALUES(Timestamp);";
 
-            console.log(query);
-            connection.query(query, function(err, rows, fields) {
-                if (err) {
-                    response.send("error inserting into database: " + err);
-                    // throw err; //TODO: Don't shutdown server on error
-                } else {
-                    response.send("Insertion should be successful");
-                }
-            });
+                console.log(query);
+                connection.query(query, function(err, rows, fields) {
+                    if (err) {
+                        response.send("ERROR::DBMS error when posting::" + err);
+                        // throw err; //TODO: Don't shutdown server on error
+                    } else {
+                        response.send("SUCCESS::Inserted data to table");
+                    }
+                });
+            } else {
+                console.log("ERROR::FBAUTH error when posting");
+                response.send("ERROR::FBAUTH error when posting");
+            }
 
         });  
 
