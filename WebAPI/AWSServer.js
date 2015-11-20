@@ -19,11 +19,12 @@ var session      = require('express-session');
 // TODO: You may want to refactor DBMS code into separate file
 //Ensure you are running a MySQL server on localhost
 //NOTE: When deploying, don't push actual usernames/passwords to public repo
+var constants = require('./config/constants.js');
 var connection = mysql.createConnection({
-    host     : 'localhost',
-    user     : 'bloomsday',
-    password : 'bloomsday',
-    database : 'bloomsday'
+    host     : constants.MySQL.host,
+    user     : constants.MySQL.user,
+    password : constants.MySQL.password,
+    database : constants.MySQL.database
 });
 connection.connect();
 

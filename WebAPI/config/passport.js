@@ -1,6 +1,7 @@
+// TODO: Passport used to generate test tokens; not for RESTful API
 // Load FB Strategy & auth variable
 var FacebookStrategy = require('passport-facebook').Strategy;
-var configAuth = require('./auth');
+var constants = require('./constants');
 
 module.exports = function(passport) {
 
@@ -16,9 +17,9 @@ module.exports = function(passport) {
     //MARK: Facebook strategy
     passport.use(new FacebookStrategy({
 
-        clientID        : configAuth.facebookAuth.clientID,
-        clientSecret    : configAuth.facebookAuth.clientSecret,
-        callbackURL     : configAuth.facebookAuth.callbackURL
+        clientID        : constants.facebookAuth.clientID,
+        clientSecret    : constants.facebookAuth.clientSecret,
+        callbackURL     : constants.facebookAuth.callbackURL
 
     },
 
