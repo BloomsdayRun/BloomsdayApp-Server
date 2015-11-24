@@ -5,6 +5,7 @@
 var express  = require( 'express' );
 var app      = express();
 var mysql    = require('mysql');
+var path     = require('path'); //required for unit tests
 
 //Auth
 var bodyParser = require('body-parser'); //parse HTTP responses
@@ -29,6 +30,7 @@ var connection = mysql.createConnection({
 connection.connect();
 
 //EJS allows embedded Javascript in pages
+app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 app.use(morgan('dev'));
 
@@ -51,9 +53,12 @@ app.use(flash());
 require('./app/routes.js')(app, passport, connection); 
 
 //Start server
-app.listen( port, function() {
+var server = app.listen( port, function() {
     console.log(app.settings.env, "server running at http://localhost:", port);
 });
+
+//Export server so mocha tests work
+module.exports = server;
 
 //End mysql connection
 // TODO: Is it okay to leave MySQL connection open for duration of server lifetime?

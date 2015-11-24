@@ -1,4 +1,5 @@
 module.exports = function(app, passport, connection) {
+    //TODO: Open-close MySQL connection on demand
     //TODO: Enhance security with app-secret proof
     //TODO: Rewrite routes to scale (can't do more than ~600 graph requests per second)
 
@@ -24,7 +25,9 @@ module.exports = function(app, passport, connection) {
 
     //home page
     app.get( '/', function(request, response) {
-        response.render("index.ejs");
+        response.render("index.ejs", function(err, html) {
+            response.send(html);
+        });
     });
 
     //MARK: RESTful API routes
