@@ -41,13 +41,15 @@ module.exports = function(app, passport, connection) {
         // ^ If this becomes a problem, look into FB's Javascript API
         var graph = require('fbgraph');
         var accessToken = request.get("access-token");
-        graph.setAccessToken(accessToken);
+        if (accessToken) graph.setAccessToken(accessToken);
 
         graph.get("me/friends/" + id, function(err, res) {
             //Check if user is friends with id by seeing if query is non-empty
             //TODO: Find a more robust way to do this
             var data = res.data;
-            if (data[0]) {
+            if (err) {
+                response.send("ERROR::FBAUTH error on get");
+            } else if (data && data[0]) {
                 var tokenId = console.log(res.data[0].id);
                 var query = "SELECT * from Runner where RunnerID = " + id + ";";
 
@@ -65,11 +67,7 @@ module.exports = function(app, passport, connection) {
                         }
                     }
                 });                
-            } 
-            else if (err) {
-                response.send("ERROR::FBAUTH error on get");
-            } 
-            else {
+            } else {
                 //they must not be friends
                 response.send("ERROR::Get non-friend or nonexistent user");
             }

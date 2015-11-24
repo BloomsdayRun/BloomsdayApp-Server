@@ -14,13 +14,24 @@ describe("Route Tests :: ", function() {
 
     it("Root", function testRoot(done) {
         request(server)
-        .get("/")
-        .expect(200, done);
+         .get("/")
+         .expect(200, done);
     });
+
     it("404", function testBroken(done) {
         request(server)
-        .get("/not/a/route")
-        .expect(404, done);
+         .get("/not/a/route")
+         .expect(404, done);
     });
+
+    //No Access Token
+    //TODO: When error/success messages are determined, parse & verify response body
+    it("GET", function testGet(done) {
+        request(server)
+         .get("/api/runner/?id=" + 12345)
+         .expect(200, done);
+    });
+
+    
 
 });
