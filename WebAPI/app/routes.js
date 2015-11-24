@@ -1,5 +1,6 @@
 module.exports = function(app, passport, connection) {
     //TODO: Enhance security with app-secret proof
+    //TODO: Rewrite routes to scale (can't do more than ~600 graph requests per second)
 
     // MARK: Facebook routes
     app.get('/auth/facebook', passport.authenticate('facebook', 
@@ -33,16 +34,17 @@ module.exports = function(app, passport, connection) {
         // var id = request.params.id;
         // console.log(id);
         var id = request.query.id;
-        //TODO: There may be a race condition with a global graph object
+        //TODO: What is the overhead of reloading graph for each request?
+        // ^ If this becomes a problem, look into FB's Javascript API
         var graph = require('fbgraph');
         var accessToken = request.get("access-token");
-        // graph.setAccessToken(accessToken);
+        graph.setAccessToken(accessToken);
 
         graph.get("me/friends/" + id, function(err, res) {
             //Check if user is friends with id by seeing if query is non-empty
             //TODO: Find a more robust way to do this
             var data = res.data;
-            if (data) {
+            if (data[0]) {
                 var tokenId = console.log(res.data[0].id);
                 var query = "SELECT * from Runner where RunnerID = " + id + ";";
 
@@ -53,16 +55,20 @@ module.exports = function(app, passport, connection) {
                         // throw err; //throwing shuts down server
                     } else {
                         if (rows[0]) { //i.e., if the response is not null/undefined
-                            console.log('Response: ', rows[0]);
+                            console.log('RESPONSE:: ', rows[0]);
                             response.send(rows[0]);     
                         } else {
-                            response.send("No such user!");     
+                            response.send("ERROR::DBMS attempt to access user with no defined location");     
                         }
                     }
                 });                
-            } else {
+            } 
+            else if (err) {
+                response.send("ERROR::FBAUTH error on get");
+            } 
+            else {
                 //they must not be friends
-                response.send("Unauthorized or nonexistent user");
+                response.send("ERROR::Get non-friend or nonexistent user");
             }
 
         });
