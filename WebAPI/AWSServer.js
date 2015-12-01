@@ -4,7 +4,6 @@
 //RESTful API
 var express  = require( 'express' );
 var app      = express();
-var mysql    = require('mysql');
 var path     = require('path'); //required for unit tests
 
 //Auth
@@ -16,19 +15,7 @@ var morgan       = require('morgan'); //post/get messages -> console
 var cookieParser = require('cookie-parser'); //read cookies
 var session      = require('express-session');
 
-// MARK: Config DBMS & auth
-// TODO: You may want to refactor DBMS code into separate file
-//Ensure you are running a MySQL server on localhost
-//NOTE: When deploying, don't push actual usernames/passwords to public repo
-var constants = require('./config/constants.js');
-var connection = mysql.createConnection({
-    host     : constants.MySQL.host,
-    user     : constants.MySQL.user,
-    password : constants.MySQL.password,
-    database : constants.MySQL.database
-});
-connection.connect();
-
+// MARK: Config & auth
 //EJS allows embedded Javascript in pages
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -50,7 +37,7 @@ app.use(passport.session());
 app.use(flash());
 
 // Routes take passport for auth and connection to talk to DBMS
-require('./app/routes.js')(app, passport, connection); 
+require('./app/routes.js')(app, passport); 
 
 //Start server
 var server = app.listen( port, function() {

@@ -1,7 +1,6 @@
 var squel = require("squel").useFlavour('mysql');;
 
-module.exports = function(app, passport, connection) {
-    //TODO: Open-close MySQL connection on demand
+module.exports = function(app, passport) {
     //TODO: Enhance security with app-secret proof
     //TODO: Rewrite routes to scale (can't do more than ~600 graph requests per second)
 
@@ -53,7 +52,6 @@ module.exports = function(app, passport, connection) {
                 response.send("ERROR::FBAUTH error on get");
             } else if (data && data[0]) {
                 var tokenId = console.log(res.data[0].id);
-                // var query = "SELECT * from Runner where RunnerID = " + id + ";";
                 var query = squel
                     .select()
                     .from("Runner")
@@ -61,9 +59,11 @@ module.exports = function(app, passport, connection) {
                     .toString() + ";";
                 console.log(query);
 
+                var connection = require("../config/connection.js")
+                connection.connect();
                 connection.query(query, function(err, rows, fields) {
                     if (err) {
-                        //TODO: Don't send error message to client in production
+                        //TODO: More consistent error messages
                         response.send("error retrieving from database: " + err);
                         // throw err; //throwing shuts down server
                     } else {
@@ -74,7 +74,8 @@ module.exports = function(app, passport, connection) {
                             response.send("ERROR::DBMS attempt to access user with no defined location");     
                         }
                     }
-                });                
+                });
+                connection.end();
             } else {
                 //they must not be friends
                 response.send("ERROR::Get non-friend or nonexistent user");
@@ -115,6 +116,8 @@ module.exports = function(app, passport, connection) {
                     .toString() + ";";
 
                 console.log(query);
+                var connection = require("../config/connection.js");
+                connection.connect();
                 connection.query(query, function(err, rows, fields) {
                     if (err) {
                         response.send("ERROR::DBMS error when posting::" + err);
@@ -123,6 +126,7 @@ module.exports = function(app, passport, connection) {
                         response.send("SUCCESS::Inserted data to table");
                     }
                 });
+                connection.end();
             } else {
                 console.log("ERROR::FBAUTH error when posting");
                 response.send("ERROR::FBAUTH error when posting");
