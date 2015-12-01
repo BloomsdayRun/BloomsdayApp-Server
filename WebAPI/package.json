@@ -8,6 +8,7 @@
         "ejs" : "~0.8.5",
         "node-mysql" : "~0.4.2",
         "mysql" : "*",
+        "squel" : "4.2.2",
 
         "passport" : "~0.1.17", 
         "passport-facebook" : "~1.0.2",
@@ -22,5 +23,6 @@
         "express-session": "~1.0.0",
 
         "supertest" : "latest"
+
     }
 }

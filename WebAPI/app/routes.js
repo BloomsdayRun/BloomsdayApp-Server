@@ -1,3 +1,5 @@
+var squel = require("squel").useFlavour('mysql');;
+
 module.exports = function(app, passport, connection) {
     //TODO: Open-close MySQL connection on demand
     //TODO: Enhance security with app-secret proof
@@ -51,7 +53,13 @@ module.exports = function(app, passport, connection) {
                 response.send("ERROR::FBAUTH error on get");
             } else if (data && data[0]) {
                 var tokenId = console.log(res.data[0].id);
-                var query = "SELECT * from Runner where RunnerID = " + id + ";";
+                // var query = "SELECT * from Runner where RunnerID = " + id + ";";
+                var query = squel
+                    .select()
+                    .from("Runner")
+                    .where("RunnerID = " + id)
+                    .toString() + ";";
+                console.log(query);
 
                 connection.query(query, function(err, rows, fields) {
                     if (err) {
@@ -94,10 +102,17 @@ module.exports = function(app, passport, connection) {
             var longitude = request.query.longitude;
             var timestamp = request.query.timestamp;
             if (!err) {
-                //TODO: There's probably a library for autoformatting SQL queries
-                var query = 
-                    "INSERT INTO Runner (RunnerId, Latitude, Longitude, TimeStamp) VALUES ('" 
-                    + tokenId + "', '" + latitude + "', '" + longitude + "', '" + timestamp + "') ON DUPLICATE KEY UPDATE Latitude=VALUES(Latitude), Longitude=VALUES(Longitude), Timestamp=VALUES(Timestamp);";
+                var query = squel
+                    .insert()
+                    .into("Runner")
+                    .set("RunnerID", tokenId )
+                    .set("Latitude", latitude )
+                    .set("Longitude", longitude )
+                    .set("TimeStamp", timestamp)
+                    .onDupUpdate("Latitude", latitude)
+                    .onDupUpdate("Longitude", longitude)
+                    .onDupUpdate("TimeStamp", timestamp)
+                    .toString() + ";";
 
                 console.log(query);
                 connection.query(query, function(err, rows, fields) {
