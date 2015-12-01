@@ -35,8 +35,8 @@ module.exports = function(app, passport, connection) {
     //GET runner data (spectator)
     app.get( '/api/runner/', function(request, response) {
         // var id = request.params.id;
-        // console.log(id);
         var id = request.query.id;
+        // console.log(id);
         //TODO: What is the overhead of reloading graph for each request?
         // ^ If this becomes a problem, look into FB's Javascript API
         var graph = require('fbgraph');

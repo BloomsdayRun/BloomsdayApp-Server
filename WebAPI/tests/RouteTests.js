@@ -45,10 +45,9 @@ describe("Basic Route Tests :: ", function() {
 
     //With access token
     //TODO: Acquire this token programatically!
+    //TODO: Extend lifetime of tokens to 60 days
     var token = "CAAXtWPCfDWsBAKBrSgcZAu9ScVdWi6VtwVHJEXyDMhkb0jVI7gsc32HAESilCGNTNxZBjisB4iSWI866XGUmJ2Hv0UnJTUzBFw3KhAkFRJ0E1PjtolAQXvzqr45UsI9ZBLUzpnejFEvmR7AGGv7SX7ZASof8DPT14MPRCgpyR3fpc2jLJVI0j3k7ZCDmWffZCWo7zLTWKHE8xdmbIEGR51";
     //TODO: Decide what JSON errors server should generate, then validate output
-    //No Access Token
-    //TODO: When error/success messages are determined, parse & verify response body
     it("GET - Valid Access Token", function testGet(done) {
         request(server)
          .get("/api/runner/?id=" + fakeId)
@@ -56,7 +55,6 @@ describe("Basic Route Tests :: ", function() {
          .expect(200, done);
     });
 
-    //TODO: Insert URL parameters programatically
     it("POST - Valid Access Token", function testPost(done) {
         request(server)         
          .post("/api/runner/?id=" + fakeId + "&latitude=3&longitude=1&timestamp=499999")
