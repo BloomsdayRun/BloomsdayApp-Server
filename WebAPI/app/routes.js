@@ -59,23 +59,26 @@ module.exports = function(app, passport) {
                     .toString() + ";";
                 console.log(query);
 
-                var connection = require("../config/connection.js")
-                connection.connect();
-                connection.query(query, function(err, rows, fields) {
-                    if (err) {
-                        //TODO: More consistent error messages
-                        response.send("error retrieving from database: " + err);
-                        // throw err; //throwing shuts down server
-                    } else {
-                        if (rows[0]) { //i.e., if the response is not null/undefined
-                            console.log('RESPONSE:: ', rows[0]);
-                            response.send(rows[0]);     
+                var pool = require("../config/connection.js");
+                pool.getConnection(function(err, connection) {
+                    //TODO: Check for error with pool
+                    connection.query(query, function(err, rows, fields) {
+                        if (err) {
+                            //TODO: More consistent error messages
+                            response.send("error retrieving from database: " + err);
+                            // throw err; //throwing shuts down server
                         } else {
-                            response.send("ERROR::DBMS attempt to access user with no defined location");     
+                            if (rows[0]) { //i.e., if the response is not null/undefined
+                                console.log('RESPONSE:: ', rows[0]);
+                                response.send(rows[0]);     
+                            } else {
+                                response.send("ERROR::DBMS attempt to access user with no defined location");     
+                            }
                         }
-                    }
+                    });
+                    connection.release();
                 });
-                connection.end();
+
             } else {
                 //they must not be friends
                 response.send("ERROR::Get non-friend or nonexistent user");
@@ -116,17 +119,20 @@ module.exports = function(app, passport) {
                     .toString() + ";";
 
                 console.log(query);
-                var connection = require("../config/connection.js");
-                connection.connect();
-                connection.query(query, function(err, rows, fields) {
-                    if (err) {
-                        response.send("ERROR::DBMS error when posting::" + err);
-                        // throw err; //TODO: Don't shutdown server on error
-                    } else {
-                        response.send("SUCCESS::Inserted data to table");
-                    }
+                var pool = require("../config/connection.js");
+                pool.getConnection(function(err, connection) {
+                    //TODO: Check for error with pool
+                    connection.query(query, function(err, rows, fields) {
+                        if (err) {
+                            response.send("ERROR::DBMS error when posting::" + err);
+                            // throw err; //TODO: Don't shutdown server on error
+                        } else {
+                            response.send("SUCCESS::Inserted data to table");
+                        }
+                    });
+                    connection.release();
                 });
-                connection.end();
+
             } else {
                 console.log("ERROR::FBAUTH error when posting");
                 response.send("ERROR::FBAUTH error when posting");
