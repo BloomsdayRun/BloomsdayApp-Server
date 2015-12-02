@@ -1,4 +1,38 @@
-var squel = require("squel").useFlavour('mysql');;
+var squel = require("squel").useFlavour('mysql');
+
+//MARK: Format RESTful params into SQL queries and send back response
+var getFromDatabase = function(data, id, response) {
+    var tokenId = console.log(data[0].id);
+    //TODO: Assert id == tokenId
+    var query = squel
+        .select()
+        .from("Runner")
+        .where("RunnerID = " + tokenId)
+        .toString() + ";";
+    console.log(query);
+
+    var pool = require("../config/connection.js");
+    pool.getConnection(function(err, connection) {
+        //TODO: Check for error with pool
+        connection.query(query, function(err, rows, fields) {
+            if (err) {
+                //TODO: More consistent error messages
+                response.send("error retrieving from database: " + err);
+                // throw err; //throwing shuts down server
+            } else {
+                if (rows[0]) { //i.e., if the response is not null/undefined
+                    console.log('RESPONSE:: ', rows[0]);
+                    response.send(rows[0]);     
+                } else {
+                    response.send("ERROR::DBMS attempt to access user with no defined location");     
+                }
+            }
+        });
+        connection.release();
+    });
+}
+
+
 
 module.exports = function(app, passport) {
     //TODO: Enhance security with app-secret proof
@@ -44,48 +78,21 @@ module.exports = function(app, passport) {
         var accessToken = request.get("access-token");
         if (accessToken) graph.setAccessToken(accessToken);
 
-        graph.get("me/friends/" + id, function(err, res) {
+        graph.get("me/friends/" + id, function(err, graphRes) {
             //Check if user is friends with id by seeing if query is non-empty
             //TODO: Find a more robust way to do this
-            var data = res.data;
+            var data = graphRes.data;
             if (err) {
                 response.send("ERROR::FBAUTH error on get");
-            } else if (data && data[0]) {
-                var tokenId = console.log(res.data[0].id);
-                var query = squel
-                    .select()
-                    .from("Runner")
-                    .where("RunnerID = " + id)
-                    .toString() + ";";
-                console.log(query);
-
-                var pool = require("../config/connection.js");
-                pool.getConnection(function(err, connection) {
-                    //TODO: Check for error with pool
-                    connection.query(query, function(err, rows, fields) {
-                        if (err) {
-                            //TODO: More consistent error messages
-                            response.send("error retrieving from database: " + err);
-                            // throw err; //throwing shuts down server
-                        } else {
-                            if (rows[0]) { //i.e., if the response is not null/undefined
-                                console.log('RESPONSE:: ', rows[0]);
-                                response.send(rows[0]);     
-                            } else {
-                                response.send("ERROR::DBMS attempt to access user with no defined location");     
-                            }
-                        }
-                    });
-                    connection.release();
-                });
-
+            } else if (data && data[0]) { //if they are friends
+                //TODO: getFromDatabase sends a response; would be more consistent
+                //if gFD returns a string, and you send response below
+                getFromDatabase(data, id, response);
             } else {
                 //they must not be friends
                 response.send("ERROR::Get non-friend or nonexistent user");
             }
-
         });
-
     });
 
     // POST runner data (runner)
