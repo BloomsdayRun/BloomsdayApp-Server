@@ -1,0 +1,31 @@
+A brief set of tools and commands for security-testing the RESTful API. Currently, this document serves as a reminder of framework syntax rather than as a full-fledged testing suite (in the future, we may turn this into a bash script for automated testing).
+
+Tool Name: SQLMap
+Description: SQLMap is used to test for SQL injection
+Download: http://sqlmap.org/
+Documentation: https://github.com/sqlmapproject/sqlmap/wiki/Usage
+
+(Injection attack on POST route)
+python sqlmap.py -u "http://localhost:8080/api/runner/" --batch --dbms="MySQL" --data="id=3141592;latitude=2;longitude=7;timestamp=181111111111111111" --param-del=";" --headers="Access-Token: CAAXtWPCfDWsBAJXSFVUJuuDR4aRIeyKZBR56053KJT87Qh6hLK3fICDndf5srXKd5gfUukUu8ZB5feTer8AuzuQtAma1ZCza3fdcel6NNgw305dFeE9sB0h1HnJXmiO9zX6LZBJ6cNrRxEQFDraAjDldfZCPBn56xdmZAMAkGaD40Y61LTTOLDarw8wCy6HKdYSMK9lMXZCDX7UuMyaoyAr"
+
+(Injection attack on GET route)
+python sqlmap.py -u "http://localhost:8080/api/runner/?id=1" --batch --dbms="MySQL" --headers="Access-Token: CAAXtWPCfDWsBAFaILtSqpI62nexWVZCzttiOoRENaHFQSJ0HU0Vfv299bdG8b3e2IzTa47w5noaZCmJfn84ebp4D7UpEdB4ggkNcQk6YXmZCrmU9tD60IW4yo4SqHvwCxIWGMqyf89krZCMjtgZAdqtHiAlZCyKtcx2QCTLok3P2sLUupeGF9FpNuHZBazNjshVpN5rZCwzV8ZCDbhfw2DTVx"
+
+* * * 
+
+Tool Name: w3af
+Description: Used for finding vulnerabilitys in web applications
+Download: http://w3af.org/download
+Documentation: http://docs.w3af.org/en/latest/index.html
+
+w3af's GUI is straightfoward; specify the target URL and select a profile (e.g. fast_scan, OWASP_TOP10), and click start. This seems to be better suited for testing websites than REST APIs; however, it does try some attacks that test our server's robustness.
+
+* * *
+
+Tool Name: nmap
+Description: Used to find open ports on a machine
+Download: sudo apt-get install nmap
+Documentation: https://nmap.org/docs.html
+
+(List open ports on a machine to ensure we don't expose unnecessary ports, which could be an attack vector)
+nmap IP_ADDR
