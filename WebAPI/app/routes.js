@@ -2,7 +2,8 @@ var squel = require("squel").useFlavour('mysql');
 
 //MARK: Format RESTful params into SQL queries and send back response
 var getFromDatabase = function(data, id, response) {
-    var tokenId = console.log(data[0].id);
+    var tokenId = data[0].id;
+    console.log("Tid: " + tokenId);
     //TODO: Assert id == tokenId
     var query = squel
         .select()
@@ -26,6 +27,35 @@ var getFromDatabase = function(data, id, response) {
                 } else {
                     response.send("ERROR::DBMS attempt to access user with no defined location");     
                 }
+            }
+        });
+        connection.release();
+    });
+}
+
+var postToDatabase = function(id, latitude, longitude, timestamp, response) {
+    var query = squel
+        .insert()
+        .into("Runner")
+        .set("RunnerID", id)
+        .set("Latitude", latitude)
+        .set("Longitude", longitude)
+        .set("TimeStamp", timestamp)
+        .onDupUpdate("Latitude", latitude)
+        .onDupUpdate("Longitude", longitude)
+        .onDupUpdate("TimeStamp", timestamp)
+        .toString() + ";";
+
+    console.log(query);
+    var pool = require("../config/connection.js");
+    pool.getConnection(function(err, connection) {
+        //TODO: Check for error with pool
+        connection.query(query, function(err, rows, fields) {
+            if (err) {
+                response.send("ERROR::DBMS error when posting::" + err);
+                // throw err; //TODO: Don't shutdown server on error
+            } else {
+                response.send("SUCCESS::Inserted data to table");
             }
         });
         connection.release();
@@ -107,46 +137,17 @@ module.exports = function(app, passport) {
             console.log(res);
             var tokenId = res.id;
             console.log(tokenId);
-
-            var id = request.query.id; //TODO: Compare id =?= tokenId
-            var latitude = request.query.latitude;
-            var longitude = request.query.longitude;
-            var timestamp = request.query.timestamp;
             if (!err) {
-                var query = squel
-                    .insert()
-                    .into("Runner")
-                    .set("RunnerID", tokenId )
-                    .set("Latitude", latitude )
-                    .set("Longitude", longitude )
-                    .set("TimeStamp", timestamp)
-                    .onDupUpdate("Latitude", latitude)
-                    .onDupUpdate("Longitude", longitude)
-                    .onDupUpdate("TimeStamp", timestamp)
-                    .toString() + ";";
-
-                console.log(query);
-                var pool = require("../config/connection.js");
-                pool.getConnection(function(err, connection) {
-                    //TODO: Check for error with pool
-                    connection.query(query, function(err, rows, fields) {
-                        if (err) {
-                            response.send("ERROR::DBMS error when posting::" + err);
-                            // throw err; //TODO: Don't shutdown server on error
-                        } else {
-                            response.send("SUCCESS::Inserted data to table");
-                        }
-                    });
-                    connection.release();
-                });
-
+                var id = request.query.id; //TODO: Compare id =?= tokenId
+                var latitude = request.query.latitude;
+                var longitude = request.query.longitude;
+                var timestamp = request.query.timestamp;
+                postToDatabase(id, latitude, longitude, timestamp, response);
             } else {
                 console.log("ERROR::FBAUTH error when posting");
                 response.send("ERROR::FBAUTH error when posting");
             }
-
         });  
-
     });
 
 }
