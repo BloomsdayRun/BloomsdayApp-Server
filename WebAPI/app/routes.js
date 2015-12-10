@@ -111,10 +111,14 @@ module.exports = function(app, passport) {
         graph.get("me/friends/" + id, function(err, graphRes) {
             //Check if user is friends with id by seeing if query is non-empty
             //TODO: Find a more robust way to do this
-            var data = graphRes.data;
+            // var data = graphRes.data;
             if (err) {
                 response.send("ERROR::FBAUTH error on get");
-            } else if (data && data[0]) { //if they are friends
+            } else if (graphRes && graphRes.data && graphRes.data[0]) { 
+            	// graphRes not null -> response from Facebook
+            	// graphRes.data not null -> response is nonempty (access token valid)
+            	// graphRes.data[0] not null -> users are friends
+            	//if they are friends
                 //TODO: getFromDatabase sends a response; would be more consistent
                 //if gFD returns a string, and you send response below
                 getFromDatabase(data, id, response);
@@ -126,6 +130,7 @@ module.exports = function(app, passport) {
     });
 
     // POST runner data (runner)
+    // TODO: Fix graph response bug in post (in event that server can't connect to FB)
     app.post( '/api/runner/', function(request, response) {
         // console.log(request.headers);
         // TODO: May need to extend token lifespan
