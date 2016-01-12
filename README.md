@@ -1,12 +1,33 @@
-A simple Node.js webserver for the Bloomsday application. Although I think we'll end up using AWS for the app, the ENSC group can use this server to test their GPS chip.
+A MySQL/Express/Node.js webserver for the Bloomsday application. Hosted on AWS EC2. The relevant code is in WebAPI; the rest of this repo is mostly practice work.
 
-The IP address of the lab server is 147.222.165.86. If ENSCServer is running, then you should be able to get a list of entries by pointing your web browser to 147.222.165.86:9000. 
+URL: http://52.33.234.200:8080
 
-Running the server: Ensure you have Node.js and the server dependencies installed and that a MongoDB instance is running on port 27017. Then run "nodejs ENSCServer.js" to start the server. To test the server, you can use the Google Chrome add-on Postman to generate post requests. Make sure you specify the request type as JSON.
+Routes (all requests should have the header *access-token*):  
+GET:  
+* /api/runner?id=ID  
+POST:  
+* /api/runner/?latitude=LAT&longitude=LON&timestamp=TS
 
-(basic_webserver and static_file_server are practice server applications with no database backend)
+Responses - Errors are prefaced with (ERROR::), successes have no prefix :  
+GET:  
+* "ERROR::FBAUTH error on get (expired token?)"
+ - Graph API error (probably expired token)
+* "ERROR::Get non-friend or nonexistent user"
+ - Requester isn't friends with user
+* "ERROR::SQL Output " + err
+ - Error in SQL query
+* "ERROR::DBMS attempt to access user with no defined location"
+ - Requester is friends with user, but query is empty
+* A successful request returns a JSON formatted string with: RunnerID, Latitude, Longitude, and Timestamp
 
-(DynamoDBPythonScripts contains some scripts for creating, updating, and reading from a DynamoDB table; this is similar to what we'll be doing with the AWS iOS SDK)
+POST:  
+* "ERROR::FBAUTH error when posting"
+ - Graph API error (probably expired token)
+* "ERROR::DBMS error when posting::" + err
+ - Error in SQL query
+* "POST_SUCCESS"
+ - Successfully updated position
+
 
 Good reading:  
 
