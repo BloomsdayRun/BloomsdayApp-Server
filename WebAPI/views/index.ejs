@@ -6,18 +6,24 @@
   </head>
 
   <body>
-    <p> This is the root of the RESTful API. You can log in with Facebook credentials below to generate a token. </p>
-    <p> The Facebook login below is probably for testing only. Final server will use the token sent by the iOS SDK </p>
+    <p> This is the root of the RESTful API. Developers can get a Facebook token <a href="https://developers.facebook.com/tools/explorer">here</a>. </p>
 
-    <p> TODO: iOS app will send a token in the header. Use this token to:
+    <p> <b>Route parameters</b> (at api/runner - all requests should have an access-token header):
         <ul>
         <li> POST: Update position of user associated with token </li>
-        <li> GET: Return position of target user only if user is a friend of requester </li> 
+          <ul>
+          <li>id (optional)</li>
+          <li>latitude</li>
+          <li>longitude</li>
+          <li>timestamp</li>
+          </ul>
+        <li> GET: Return position of target only if user is a friend of requester </li> 
+          <ul>
+          <li>id (of target)</li>
+          </ul>
         </ul>
     </p>
 
-
-    <a href="/auth/facebook"> Log in With Feisu-Bukku </a>
 
   </body>
 
