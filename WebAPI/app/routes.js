@@ -109,6 +109,7 @@ module.exports = function(app, passport) {
 
 
 var squel = require("squel").useFlavour('mysql');
+var pool = require("../config/connection.js");
 
 //MARK: Format RESTful params into SQL queries and send back response
 var getFromDatabase = function(data, id, out) {
@@ -123,30 +124,19 @@ var getFromDatabase = function(data, id, out) {
         .toString() + ";";
     console.log(query);
 
-    // var out = "ERROR::SQL query pool was never created";
-
-    var pool = require("../config/connection.js");
-    pool.getConnection(function(err, connection) {
-        //TODO: Check for error with pool
-        connection.query(query, function(err, rows, fields) {
-            if (err) {
-                //TODO: More consistent error messages
-                // response.send("ERROR::SQL Output " + err);
-                out("ERROR::SQL Output " + err);
-                // throw err; //throwing shuts down server
+    execQuery(query, function(err, rows, fields) {
+        if (err) {
+            //TODO: More consistent error messages
+            out("ERROR::SQL Output " + err);
+            // throw err; //throwing shuts down server
+        } else {
+            if (rows[0]) { //i.e., if the response is not null/undefined
+                console.log('Retrieved ', rows[0]);     
+                out(rows[0]);
             } else {
-                if (rows[0]) { //i.e., if the response is not null/undefined
-                    console.log('Retrieved ', rows[0]);
-                    // response.send(rows[0]);     
-                    out(rows[0]);
-                } else {
-                    // response.send("ERROR::DBMS attempt to access user with no defined location");
-                    out("ERROR::DBMS attempt to access user with no defined location");
-                }
+                out("ERROR::DBMS attempt to access user with no defined location");
             }
-        });
-        connection.release();
-        // console.log("Connection was released");
+        }
     });
 }
 
@@ -164,17 +154,27 @@ var postToDatabase = function(id, latitude, longitude, timestamp, out) {
         .toString() + ";";
 
     console.log(query);
-    var pool = require("../config/connection.js");
-    pool.getConnection(function(err, connection) {
-        //TODO: Check for error with pool
-        connection.query(query, function(err, rows, fields) {
-            if (err) {
-                out("ERROR::DBMS error when posting::" + err);
-                // throw err; //TODO: Don't shutdown server on error
-            } else {
-                out("POST_SUCCESS");
-            }
-        });
-        connection.release();
+    // var pool = require("../config/connection.js");
+    execQuery(query, function(err, rows, fields) {
+        if (err) {
+            out("ERROR::DBMS error when posting::" + err);
+        } else {
+            out("POST_SUCCESS");
+        }
     });
+}
+
+// Get a connection from the pool, and call callback upon query
+var execQuery = function(query, callback) {
+    pool.getConnection(function(err, connection) {
+        if (err) {
+            //TODO: Better error handling here
+            console.log("Error in connection pool");
+        } else {
+            connection.query(query, function(err, rows, fields) {
+                callback(err, rows, fields);
+            });
+            connection.release();            
+        }
+    });    
 }
