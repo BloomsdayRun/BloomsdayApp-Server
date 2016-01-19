@@ -22,4 +22,6 @@ CREATE TABLE Runner ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY,
 CREATE TABLE TokenCache ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY, 
 	Token VARCHAR(2048) );
 
--- TODO: Friends table, token cache table
+-- Can A follow B? (i.e., determine if they are Facebook friends)
+CREATE TABLE CanFollow ( FollowerID VARCHAR(255) NOT NULL PRIMARY KEY, 
+	FollowedID VARCHAR(255) NOT NULL );

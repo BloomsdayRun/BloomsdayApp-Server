@@ -90,8 +90,8 @@ module.exports = function(app, passport) {
         } 
 
         var accessToken = request.get("access-token");
-        tokenAuth(request.query.id, accessToken, function(cached) {
-            if (cached) {
+        getIdFromToken(accessToken, function(cachedID) {
+            if (cachedID === request.query.id) {
                 console.log("Using cached token");
                 post();
             } else {
@@ -125,20 +125,25 @@ var squel = require("squel").useFlavour('mysql');
 var pool = require("../config/connection.js");
 
 //MARK: Caching functions
-var tokenAuth = function(id, sentToken, next) {
+
+var getIdFromToken = function(sentToken, next) {
     var query = squel
-        .select().from("TokenCache").where("RunnerID = " + id).toString() + ";";
+        .select().from("TokenCache").where("Token = '" + sentToken + "'").toString() + ";";
     console.log(query);
     execQuery(query, function(err, rows, fields) {
         if (err) {
             console.log("ERROR::SQL Output " + err);
-            next(false); //TODO: Handle error
-        } else {
+            next("ERROR::Retrieving cached ID"); //TODO: Handle error
+        } 
+        // else if (rows.length > 1) { //Corner-case
+        //     console.log("TODO: Drop data where same token maps to different IDs");
+        // } 
+        else {
             cachedToken = rows[0];
-            console.log("Retrieve cached token: " + id + " - ", cachedToken);
-            next(cachedToken.Token === sentToken)
+            console.log("Retrieve cached token: ", cachedToken);
+            next(cachedToken.RunnerID);
         }
-    });
+    });    
 }
 
 var updateTokenCache = function(id, token) {
@@ -152,7 +157,7 @@ var updateTokenCache = function(id, token) {
     execQuery(query, function(err, rows, fields) {
         console.log("Update token cache: " + id + " - " + token);
     });
-}
+};
 
 //MARK: Format RESTful params into SQL queries and send back response
 var getFromDatabase = function(data, id, out) {
