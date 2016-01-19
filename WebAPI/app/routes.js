@@ -80,29 +80,42 @@ module.exports = function(app, passport) {
     // POST runner data (runner)
     // TODO: Fix graph response bug in post (in event that server can't connect to FB)
     app.post( '/api/runner/', function(request, response) {
-        // console.log(request.headers);
-        // TODO: May need to extend token lifespan
-        console.log(request.get("access-token"));
-        var graph = require('fbgraph');
-        var accessToken = request.get("access-token");
-        graph.setAccessToken(accessToken);
-        graph.get("me?fields=id,name,friends", function(err, res) {
-            console.log(res);
-            var tokenId = res.id;
-            console.log(tokenId);
-            if (!err) {
-                // var id = request.query.id; //TODO: Compare id =?= tokenId
-                var latitude = request.query.latitude;
-                var longitude = request.query.longitude;
-                var timestamp = request.query.timestamp;
-                postToDatabase(tokenId, latitude, longitude, timestamp, function(msg) {
+        var post = function() {
+            postToDatabase(request.query.id,
+                request.query.latitude,
+                request.query.longitude,
+                request.query.timestamp, function(msg) {
                     response.send(msg);
-                });
+                });  
+        } 
+
+        var accessToken = request.get("access-token");
+        tokenAuth(request.query.id, accessToken, function(cached) {
+            if (cached) {
+                console.log("Using cached token");
+                post();
             } else {
-                console.log("ERROR::FBAUTH error when posting");
-                response.send("ERROR::FBAUTH error when posting");
+                var graph = require('fbgraph');
+                graph.setAccessToken(accessToken);
+                graph.get("me?fields=id,name,friends", function(err, res) {
+                    console.log(res);
+                    var tokenId = res.id;
+                    console.log(tokenId);
+                    if (!err) {
+                        if (request.query.id === tokenId) {
+                            updateTokenCache(request.query.id, accessToken);
+                            post();                            
+                        } else {
+                            response.send("ERROR::ID associated with token != sent ID");
+                        }
+
+                    } else {
+                        console.log("ERROR::FBAUTH error when posting");
+                        response.send("ERROR::FBAUTH error when posting");
+                    }
+                }); 
             }
-        });            
+        });       
     });
 
 }
@@ -110,6 +123,36 @@ module.exports = function(app, passport) {
 
 var squel = require("squel").useFlavour('mysql');
 var pool = require("../config/connection.js");
+
+//MARK: Caching functions
+var tokenAuth = function(id, sentToken, next) {
+    var query = squel
+        .select().from("TokenCache").where("RunnerID = " + id).toString() + ";";
+    console.log(query);
+    execQuery(query, function(err, rows, fields) {
+        if (err) {
+            console.log("ERROR::SQL Output " + err);
+            next(false); //TODO: Handle error
+        } else {
+            cachedToken = rows[0];
+            console.log("Retrieve cached token: " + id + " - ", cachedToken);
+            next(cachedToken.Token === sentToken)
+        }
+    });
+}
+
+var updateTokenCache = function(id, token) {
+    var query = squel
+        .insert()
+        .into("TokenCache")
+        .set("RunnerID", id)
+        .set("Token", token)
+        .onDupUpdate("Token", token)
+        .toString() + ";";
+    execQuery(query, function(err, rows, fields) {
+        console.log("Update token cache: " + id + " - " + token);
+    });
+}
 
 //MARK: Format RESTful params into SQL queries and send back response
 var getFromDatabase = function(data, id, out) {
