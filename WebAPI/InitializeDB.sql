@@ -18,4 +18,8 @@ CREATE TABLE Runner ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY,
 	Longitude float,
 	Timestamp int );
 
+-- Run into problems if FB OAuth tokens are longer than 2048 characters
+CREATE TABLE TokenCache ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY, 
+	Token VARCHAR(2048) );
+
 -- TODO: Friends table, token cache table

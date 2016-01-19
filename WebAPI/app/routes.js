@@ -66,7 +66,10 @@ module.exports = function(app, passport) {
                 //TODO: getFromDatabase sends a response; would be more consistent
                 //if gFD returns a string, and you send response below
                 var data = graphRes.data;
-                getFromDatabase(data, id, response);
+                var msg = getFromDatabase(data, id, function(msg) {
+                    response.send(msg);
+                });
+                // response.send(msg);
             } else {
                 //they must not be friends
                 response.send("ERROR::Get non-friend or nonexistent user");
@@ -92,12 +95,14 @@ module.exports = function(app, passport) {
                 var latitude = request.query.latitude;
                 var longitude = request.query.longitude;
                 var timestamp = request.query.timestamp;
-                postToDatabase(tokenId, latitude, longitude, timestamp, response);
+                postToDatabase(tokenId, latitude, longitude, timestamp, function(msg) {
+                    response.send(msg);
+                });
             } else {
                 console.log("ERROR::FBAUTH error when posting");
                 response.send("ERROR::FBAUTH error when posting");
             }
-        });  
+        });            
     });
 
 }
@@ -106,7 +111,7 @@ module.exports = function(app, passport) {
 var squel = require("squel").useFlavour('mysql');
 
 //MARK: Format RESTful params into SQL queries and send back response
-var getFromDatabase = function(data, id, response) {
+var getFromDatabase = function(data, id, out) {
     var tokenId = data[0].id;
     console.log("Get: ", data); //data contains name, id
     //TODO: Assert id == tokenId 
@@ -118,28 +123,34 @@ var getFromDatabase = function(data, id, response) {
         .toString() + ";";
     console.log(query);
 
+    // var out = "ERROR::SQL query pool was never created";
+
     var pool = require("../config/connection.js");
     pool.getConnection(function(err, connection) {
         //TODO: Check for error with pool
         connection.query(query, function(err, rows, fields) {
             if (err) {
                 //TODO: More consistent error messages
-                response.send("ERROR::SQL Output " + err);
+                // response.send("ERROR::SQL Output " + err);
+                out("ERROR::SQL Output " + err);
                 // throw err; //throwing shuts down server
             } else {
                 if (rows[0]) { //i.e., if the response is not null/undefined
                     console.log('Retrieved ', rows[0]);
-                    response.send(rows[0]);     
+                    // response.send(rows[0]);     
+                    out(rows[0]);
                 } else {
-                    response.send("ERROR::DBMS attempt to access user with no defined location");     
+                    // response.send("ERROR::DBMS attempt to access user with no defined location");
+                    out("ERROR::DBMS attempt to access user with no defined location");
                 }
             }
         });
         connection.release();
+        // console.log("Connection was released");
     });
 }
 
-var postToDatabase = function(id, latitude, longitude, timestamp, response) {
+var postToDatabase = function(id, latitude, longitude, timestamp, out) {
     var query = squel
         .insert()
         .into("Runner")
@@ -158,10 +169,10 @@ var postToDatabase = function(id, latitude, longitude, timestamp, response) {
         //TODO: Check for error with pool
         connection.query(query, function(err, rows, fields) {
             if (err) {
-                response.send("ERROR::DBMS error when posting::" + err);
+                out("ERROR::DBMS error when posting::" + err);
                 // throw err; //TODO: Don't shutdown server on error
             } else {
-                response.send("POST_SUCCESS");
+                out("POST_SUCCESS");
             }
         });
         connection.release();
