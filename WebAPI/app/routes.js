@@ -9,30 +9,10 @@ GET (location of friend)
     id
 */
 
-module.exports = function(app, passport) {
+module.exports = function(app) {
     //TODO: Enhance security with app-secret proof
-    //TODO: Rewrite routes to scale (can't do more than ~600 graph requests per second)
-
-    // MARK: Facebook routes
-    app.get('/auth/facebook', passport.authenticate('facebook', 
-        // Scope determines permissions associated with token
-        { scope: ['email', 'user_friends'],
-          session : false
-         }
-        )
-    );
-
-    //Success/fail options upon Facebook auth
-    app.get('/auth/facebook/callback',
-        passport.authenticate('facebook', {
-            successRedirect : '/testSuccess',
-            failureRedirect : '/'
-        }));
-
-    app.get("/testSuccess", function(request, response) {
-        response.send("Great success logging in");
-    });
-
+    //TODO: Ensure caching works (can't do more than ~600 graph requests per second)
+    
     //home page
     app.get( '/', function(request, response) {
         response.render("index.ejs", function(err, html) {
@@ -245,7 +225,6 @@ var postToDatabase = function(id, latitude, longitude, timestamp, out) {
         .toString() + ";";
 
     console.log(query);
-    // var pool = require("../config/connection.js");
     execQuery(query, function(err, rows, fields) {
         if (err) {
             out("ERROR::DBMS error when posting::" + err);

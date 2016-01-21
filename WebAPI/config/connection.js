@@ -5,6 +5,7 @@ var mysql    = require('mysql');
 var constants = require('./constants.js');
 
 //TODO: Config number of connections based on demand
+//TODO: Should pool be deleted when server shuts down?
 var connection = mysql.createPool({
     host     : constants.MySQL.host,
     user     : constants.MySQL.user,

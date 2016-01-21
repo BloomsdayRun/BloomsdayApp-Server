@@ -9,11 +9,8 @@ var path     = require('path'); //required for unit tests
 //Auth
 var bodyParser = require('body-parser'); //parse HTTP responses
 var port       = process.env.PORT || 8080;
-var passport   = require('passport'); //authentication middleware
 var flash      = require('connect-flash'); //flash messages
 var morgan       = require('morgan'); //post/get messages -> console
-var cookieParser = require('cookie-parser'); //read cookies
-var session      = require('express-session');
 
 // MARK: Config & auth
 //EJS allows embedded Javascript in pages
@@ -25,19 +22,10 @@ app.use(morgan('dev'));
 app.use(bodyParser.urlencoded({
     extended: true
 }));
-app.use(cookieParser());
-
-//Configure passport
-require('./config/passport')(passport); // pass passport for configuration
-//I don't believe we'll use sessions in RESTful API (stateless)...
-//TODO: Refactor per final design
-app.use(session({ secret: "THIS IS THE SESSION SECRET" }));
-app.use(passport.initialize());
-app.use(passport.session());
 app.use(flash());
 
 // Routes take passport for auth and connection to talk to DBMS
-require('./app/routes.js')(app, passport); 
+require('./app/routes.js')(app); 
 
 //Start server
 var server = app.listen( port, function() {
@@ -46,7 +34,3 @@ var server = app.listen( port, function() {
 
 //Export server so mocha tests work
 module.exports = server;
-
-//End mysql connection
-// TODO: Is it okay to leave MySQL connection open for duration of server lifetime?
-// connection.end();
