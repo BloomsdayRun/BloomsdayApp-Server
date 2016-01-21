@@ -53,7 +53,7 @@ module.exports = function(app) {
                             get(graphRes.data[0].id);
                         } else {
                             //they must not be friends
-                            response.send("ERROR::Get non-friend or nonexistent user " 
+                            response.send("ERROR::Get non-friend or nonexistent user ");
                                 + JSON.stringify(graphRes));
                         }
                     });                    
@@ -113,6 +113,8 @@ var checkTokenCache = function(token, success, fail) {
               + "|" + constants.facebookAuth.clientSecret, function(fberr, res) {
                 if (fberr) {
                     fail("ERROR: FBERROR " + JSON.stringify(fberr) );
+                } else if (res.data.error) {
+                    fail("ERROR: FBERROR " + res.data.error.message);
                 } else {
                     var tokenId = res.data.user_id;
                     var expiry = res.data.expires_at;
@@ -138,15 +140,21 @@ var checkTokenCache = function(token, success, fail) {
 
 var canFollow = function(followerID, followedID, next) {
     //TODO: For reflexivity: INSERT INTO CanFollow (followerID, followerID)?
-    if (followerID == followedID) next(true); 
-    var query = squel
-        .select().from("CanFollow").where("FollowerID = " + followerID)
-        .where("FollowedID = " + followedID)
-        .toString() + ";";
-    console.log(query);
-    execQuery(query, function(err, rows, fields) {
-        next(rows.length == 1);
-    }); 
+    if (followerID === followedID) {
+        next(true); 
+    } else {
+        var query = squel
+            .select().from("CanFollow").where("FollowerID = " + followerID)
+            .where("FollowedID = " + followedID)
+            .toString() + ";";
+        console.log(query);
+        execQuery(query, function(err, rows, fields) {
+            if (err) next(false);
+            if (!rows) next(false);
+            console.log(rows);
+            next(rows.length == 1);
+        });
+    }
 }
 
 var updateCanFollow = function(followerID, followedID) {
