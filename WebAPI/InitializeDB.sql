@@ -12,6 +12,7 @@ FLUSH PRIVILEGES;
 
 
 USE bloomsday;
+-- TODO: RunnerID is numeric; don't need varchar
 -- Create all necessary tables for database (only one to-date)
 CREATE TABLE Runner ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY,
 	Latitude float,

@@ -137,6 +137,8 @@ var checkTokenCache = function(token, success, fail) {
 }
 
 var canFollow = function(followerID, followedID, next) {
+    //TODO: For reflexivity: INSERT INTO CanFollow (followerID, followerID)?
+    if (followerID == followedID) next(true); 
     var query = squel
         .select().from("CanFollow").where("FollowerID = " + followerID)
         .where("FollowedID = " + followedID)
