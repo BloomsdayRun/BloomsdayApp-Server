@@ -5,6 +5,7 @@ URL: http://52.33.234.200:8080
 Routes (all requests should have the header *access-token*):  
 GET:  
 * /api/runner?id=ID  
+
 POST:  
 * /api/runner/?latitude=LAT&longitude=LON&timestamp=TS
 
