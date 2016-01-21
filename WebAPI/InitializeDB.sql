@@ -20,7 +20,8 @@ CREATE TABLE Runner ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY,
 
 -- Run into problems if FB OAuth tokens are longer than 2048 characters
 CREATE TABLE TokenCache ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY, 
-	Token VARCHAR(2048) );
+	Token VARCHAR(2048),
+	Expiry int );
 
 -- Can A follow B? (i.e., determine if they are Facebook friends)
 CREATE TABLE CanFollow ( FollowerID VARCHAR(255) NOT NULL, 

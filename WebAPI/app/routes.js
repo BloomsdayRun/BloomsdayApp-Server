@@ -8,11 +8,11 @@ POST (your location)
 GET (location of friend)
     id
 */
-
+var constants = require("../config/constants");
 module.exports = function(app) {
     //TODO: Enhance security with app-secret proof
     //TODO: Ensure caching works (can't do more than ~600 graph requests per second)
-    
+
     //home page
     app.get( '/', function(request, response) {
         response.render("index.ejs", function(err, html) {
@@ -69,8 +69,8 @@ module.exports = function(app) {
     // POST runner data (runner)
     // TODO: Fix graph response bug in post (in event that server can't connect to FB)
     app.post( '/api/runner/', function(request, response) {
-        var post = function() {
-            postToDatabase(request.query.id,
+        var post = function(id) {
+            postToDatabase(id,
                 request.query.latitude,
                 request.query.longitude,
                 request.query.timestamp, function(msg) {
@@ -79,41 +79,63 @@ module.exports = function(app) {
         } 
 
         var accessToken = request.get("access-token");
-        getIdFromToken(accessToken, function(cachedID) {
-            if (cachedID === request.query.id) {
-                console.log("Using cached token");
-                post();
-            } else {
-                var graph = require('fbgraph');
-                graph.setAccessToken(accessToken);
-                graph.get("me?fields=id,name,friends", function(err, res) {
-                    console.log(res);
-                    var tokenId = res.id;
-                    console.log(tokenId);
-                    if (!err) {
-                        if (request.query.id === tokenId) {
-                            updateTokenCache(request.query.id, accessToken);
-                            post();                            
-                        } else {
-                            response.send("ERROR::ID associated with token != sent ID");
-                        }
-
-                    } else {
-                        console.log("ERROR::FBAUTH error when posting");
-                        response.send("ERROR::FBAUTH error when posting");
-                    }
-                }); 
-            }
-        });       
+        checkTokenCache(accessToken, function(id) {
+            post(id);
+        },
+        function(err) {
+            response.send(err);
+        });     
     });
 
 }
-
 
 var squel = require("squel").useFlavour('mysql');
 var pool = require("../config/connection.js");
 
 //MARK: Caching functions
+
+var checkTokenCache = function(token, success, fail) {
+    var query = squel
+        .select().from("TokenCache").where("Token = '" + token + "'").toString() + ";";
+    console.log(query);
+    execQuery(query, function(err, rows, fields) {
+        if (err) {
+            console.log("ERROR::SQL Output " + err);
+            fail("ERROR::Retrieving cached ID");
+        }
+        // else if (rows.length > 1) { //Corner-case
+        //     console.log("TODO: Drop data where same token maps to different IDs");
+        // }
+        else if (rows.length == 0) { //T does not exist
+            console.log("No such cached token");
+            var graph = require('fbgraph');
+            graph.get("debug_token?input_token=" + token 
+                + "&access_token=" + constants.facebookAuth.clientID 
+                + "|" + constants.facebookAuth.clientSecret, function(fberr, res) {
+                var tokenId = res.data.user_id;
+                var expiry = res.data.expires_at;
+                console.log(tokenId + " - " + expiry);
+                if (!fberr) {
+                    updateTokenCache(tokenId, token, expiry);
+                    success(tokenId);        
+                } else {
+                    fail("ERROR: FBERROR " + JSON.stringify(fberr) );
+                }
+            });      
+        } else { //T does exist
+            cached = rows[0];
+            console.log("Retrieve cached token: ", cached);
+            var now = new Date().getTime();
+            if (now > cached.expiry) {
+                //TODO: Maybe token expires for User A, and Facebook reissues token to B
+                // (could fix client side - ask for new token if getting expired message)
+                fail("ERROR::Your token expired at " + cached.expiry); 
+            } else {
+                success(cached.RunnerID);
+            }
+        }    
+    });
+}
 
 var canFollow = function(followerID, followedID, next) {
     var query = squel
@@ -138,44 +160,15 @@ var updateCanFollow = function(followerID, followedID) {
     });    
 }
 
-//TODO: Fix spaghetti code around getting IDs from token
-var getIdFromToken = function(sentToken, next) {
-    var query = squel
-        .select().from("TokenCache").where("Token = '" + sentToken + "'").toString() + ";";
-    console.log(query);
-    execQuery(query, function(err, rows, fields) {
-        if (err) {
-            console.log("ERROR::SQL Output " + err);
-            next("ERROR::Retrieving cached ID"); //TODO: Handle error
-        } 
-        // else if (rows.length > 1) { //Corner-case
-        //     console.log("TODO: Drop data where same token maps to different IDs");
-        // }
-        else if (rows.length == 0) {
-            var graph = require('fbgraph');
-            graph.setAccessToken(sentToken);
-            graph.get("me?fields=id,name,friends", function(err, res) {
-                var tokenId = res.id;
-                if (!err) {
-                    updateTokenCache(tokenId, sentToken);
-                    next(tokenId);              
-                }
-            });             
-        } else {
-            cachedToken = rows[0];
-            console.log("Retrieve cached token: ", cachedToken);
-            next(cachedToken.RunnerID);
-        }
-    });    
-}
-
-var updateTokenCache = function(id, token) {
+var updateTokenCache = function(id, token, expiry) {
     var query = squel
         .insert()
         .into("TokenCache")
         .set("RunnerID", id)
         .set("Token", token)
+        .set("Expiry", expiry)
         .onDupUpdate("Token", token)
+        .onDupUpdate("Expiry", expiry)
         .toString() + ";";
     execQuery(query, function(err, rows, fields) {
         console.log("Update token cache: " + id + " - " + token);
