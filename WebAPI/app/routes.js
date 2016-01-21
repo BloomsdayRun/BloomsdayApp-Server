@@ -26,25 +26,21 @@ module.exports = function(app) {
     // TODO: Validate URL params on requests prior to anything else
     app.get( '/api/runner/', function(request, response) {
         var accessToken = request.get("access-token");
-        var get = function(id) {
-            var msg = getFromDatabase(id, function(msg) {
+        var get = function(target) {
+            var msg = getFromDatabase(target, function(msg) {
                 response.send(msg);
             });
         };
 
-        getIdFromToken(accessToken, function(cachedID) {
-            // var id = request.params.id;
-            var id = request.query.id;
-            canFollow(cachedID, id, function(can) {
-                if (can) {
-                    get(id);
+        checkTokenCache(accessToken, function(followerId) {
+            canFollow(followerId, request.query.id, function(cached) {
+                if (cached) {
+                    get(request.query.id);
                 } else {
-                    //TODO: What is the overhead of reloading graph for each request?
-                    // ^ If this becomes a problem, look into FB's Javascript API
+                    // Check for friendship and update cache
                     var graph = require('fbgraph');
                     if (accessToken) graph.setAccessToken(accessToken);
-
-                    graph.get("me/friends/" + id, function(err, graphRes) {
+                    graph.get("me/friends/" + request.query.id, function(err, graphRes) {
                         //Check if user is friends with id by seeing if query is non-empty
                         //TODO: Find a more robust way to do this
                         if (err) {
@@ -53,16 +49,19 @@ module.exports = function(app) {
                             // graphRes not null -> response from Facebook
                             // graphRes.data not null -> response is nonempty (access token valid)
                             // graphRes.data[0] not null -> users are friends
-                            updateCanFollow(cachedID, graphRes.data[0].id);
+                            updateCanFollow(followerId, graphRes.data[0].id);
                             get(graphRes.data[0].id);
                         } else {
                             //they must not be friends
-                            response.send("ERROR::Get non-friend or nonexistent user");
+                            response.send("ERROR::Get non-friend or nonexistent user " 
+                                + JSON.stringify(graphRes));
                         }
-                    });
+                    });                    
                 }
             });
-
+        },
+        function(err) {
+            response.send(err);
         });
     });
 
@@ -110,16 +109,16 @@ var checkTokenCache = function(token, success, fail) {
             console.log("No such cached token");
             var graph = require('fbgraph');
             graph.get("debug_token?input_token=" + token 
-                + "&access_token=" + constants.facebookAuth.clientID 
-                + "|" + constants.facebookAuth.clientSecret, function(fberr, res) {
-                var tokenId = res.data.user_id;
-                var expiry = res.data.expires_at;
-                console.log(tokenId + " - " + expiry);
-                if (!fberr) {
+              + "&access_token=" + constants.facebookAuth.clientID 
+              + "|" + constants.facebookAuth.clientSecret, function(fberr, res) {
+                if (fberr) {
+                    fail("ERROR: FBERROR " + JSON.stringify(fberr) );
+                } else {
+                    var tokenId = res.data.user_id;
+                    var expiry = res.data.expires_at;
+                    console.log(tokenId + " - " + expiry);
                     updateTokenCache(tokenId, token, expiry);
                     success(tokenId);        
-                } else {
-                    fail("ERROR: FBERROR " + JSON.stringify(fberr) );
                 }
             });      
         } else { //T does exist
