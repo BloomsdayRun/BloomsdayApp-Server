@@ -53,7 +53,7 @@ module.exports = function(app) {
                             get(graphRes.data[0].id);
                         } else {
                             //they must not be friends
-                            response.send("ERROR::Get non-friend or nonexistent user ");
+                            response.send("ERROR::Get non-friend or nonexistent user "
                                 + JSON.stringify(graphRes));
                         }
                     });                    
