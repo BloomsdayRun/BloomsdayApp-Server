@@ -12,7 +12,7 @@ FLUSH PRIVILEGES;
 
 
 USE bloomsday;
--- TODO: RunnerID is numeric; don't need varchar
+-- RunnerID is numeric (Facebook ID), but FB API could change
 -- Create all necessary tables for database (only one to-date)
 CREATE TABLE Runner ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY,
 	Latitude float,

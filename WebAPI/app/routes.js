@@ -26,73 +26,98 @@ module.exports = function(app) {
     // TODO: Validate URL params on requests prior to anything else
     app.get( '/api/runner/', function(request, response) {
         var accessToken = request.get("access-token");
-        var get = function(target) {
-            var msg = getFromDatabase(target, function(msg) {
-                response.send(msg);
-            });
-        };
+        if (!validateGet(accessToken, request.query.id)) {
+            response.send("Invalid token or params");
+        } else {
+            var get = function(target) {
+                var msg = getFromDatabase(target, function(msg) {
+                    response.send(msg);
+                });
+            };
 
-        checkTokenCache(accessToken, function(followerId) {
-            canFollow(followerId, request.query.id, function(cached) {
-                if (cached) {
-                    get(request.query.id);
-                } else {
-                    // Check for friendship and update cache
-                    var graph = require('fbgraph');
-                    if (accessToken) graph.setAccessToken(accessToken);
-                    graph.get("me/friends/" + request.query.id, function(err, graphRes) {
-                        //Check if user is friends with id by seeing if query is non-empty
-                        //TODO: Find a more robust way to do this
-                        if (err) {
-                            response.send("ERROR::FBAUTH error on get (expired token?)");
-                        } else if (graphRes && graphRes.data && graphRes.data[0]) { 
-                            // graphRes not null -> response from Facebook
-                            // graphRes.data not null -> response is nonempty (access token valid)
-                            // graphRes.data[0] not null -> users are friends
-                            updateCanFollow(followerId, graphRes.data[0].id);
-                            get(graphRes.data[0].id);
-                        } else {
-                            //they must not be friends
-                            response.send("ERROR::Get non-friend or nonexistent user "
-                                + JSON.stringify(graphRes));
-                        }
-                    });                    
-                }
-            });
-        },
-        function(err) {
-            response.send(err);
-        });
+            checkTokenCache(accessToken, function(followerId) {
+                canFollow(followerId, request.query.id, function(cached) {
+                    if (cached) {
+                        get(request.query.id);
+                    } else {
+                        // Check for friendship and update cache
+                        var graph = require('fbgraph');
+                        if (accessToken) graph.setAccessToken(accessToken);
+                        graph.get("me/friends/" + request.query.id, function(err, graphRes) {
+                            //Check if user is friends with id by seeing if query is non-empty
+                            //TODO: Find a more robust way to do this
+                            if (err) {
+                                response.send("ERROR::FBAUTH error on get (expired token?)");
+                            } else if (graphRes && graphRes.data && graphRes.data[0]) { 
+                                // graphRes not null -> response from Facebook
+                                // graphRes.data not null -> response is nonempty (access token valid)
+                                // graphRes.data[0] not null -> users are friends
+                                updateCanFollow(followerId, graphRes.data[0].id);
+                                get(graphRes.data[0].id);
+                            } else {
+                                //they must not be friends
+                                response.send("ERROR::Get non-friend or nonexistent user "
+                                    + JSON.stringify(graphRes));
+                            }
+                        });                    
+                    }
+                });
+            },
+            function(err) {
+                response.send(err);
+            });            
+        }
     });
 
     // POST runner data (runner)
     // TODO: Fix graph response bug in post (in event that server can't connect to FB)
     app.post( '/api/runner/', function(request, response) {
-        var post = function(id) {
-            postToDatabase(id,
-                request.query.latitude,
-                request.query.longitude,
-                request.query.timestamp, function(msg) {
-                    response.send(msg);
-                });  
-        } 
-
         var accessToken = request.get("access-token");
-        checkTokenCache(accessToken, function(id) {
-            post(id);
-        },
-        function(err) {
-            response.send(err);
-        });     
-    });
+        if (!validatePost(accessToken, request.query.latitude, 
+          request.query.longitude, request.query.timestamp)) {
+            response.send("Invalid token or params");
+        } else {
+            var post = function(id) {
+                postToDatabase(id,
+                    request.query.latitude,
+                    request.query.longitude,
+                    request.query.timestamp, function(msg) {
+                        response.send(msg);
+                    });  
+            } 
 
+            checkTokenCache(accessToken, function(id) {
+                post(id);
+            },
+            function(err) {
+                response.send(err);
+            });  
+        }   
+    });            
+}
+
+//MARK: Request validation
+var validateGet = function(accessToken, id) {
+    if (accessToken && id) {
+        return (!(isNaN(id)) && accessToken.split(" ").length == 1);
+    } else {
+        return false;
+    }
+}
+
+var validatePost = function(accessToken, latitude, longitude, timestamp) {
+    if (accessToken && latitude && longitude && timestamp) {
+        return (!(isNaN(latitude)) && !(isNaN(longitude)) &&
+            !isNaN(timestamp) && accessToken.split(" ").length == 1);
+    } else {
+        return false;
+    }    
 }
 
 var squel = require("squel").useFlavour('mysql');
 var pool = require("../config/connection.js");
 
 //MARK: Caching functions
-
 var checkTokenCache = function(token, success, fail) {
     var query = squel
         .select().from("TokenCache").where("Token = '" + token + "'").toString() + ";";
