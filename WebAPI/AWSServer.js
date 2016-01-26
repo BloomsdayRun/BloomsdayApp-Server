@@ -10,7 +10,7 @@ var path     = require('path'); //required for unit tests
 var bodyParser = require('body-parser'); //parse HTTP responses
 var port       = process.env.PORT || 8080;
 var flash      = require('connect-flash'); //flash messages
-var morgan       = require('morgan'); //post/get messages -> console
+var morgan     = require('morgan'); //post/get messages -> console
 
 // MARK: Config & auth
 //EJS allows embedded Javascript in pages

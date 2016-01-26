@@ -11,6 +11,7 @@ GET (location of friend)
 var constants = require("../config/constants");
 module.exports = function(app) {
     //TODO: Enhance security with app-secret proof
+    //TODO: Consistent logging
     //TODO: Ensure caching works (can't do more than ~600 graph requests per second)
 
     //home page
@@ -70,7 +71,6 @@ module.exports = function(app) {
     });
 
     // POST runner data (runner)
-    // TODO: Fix graph response bug in post (in event that server can't connect to FB)
     app.post( '/api/runner/', function(request, response) {
         var accessToken = request.get("access-token");
         if (!validatePost(accessToken, request.query.latitude, 
@@ -96,7 +96,7 @@ module.exports = function(app) {
     });            
 }
 
-//MARK: Request validation
+//MARK: Request parameter validation
 var validateGet = function(accessToken, id) {
     if (accessToken && id) {
         return (!(isNaN(id)) && accessToken.split(" ").length == 1);
@@ -164,7 +164,7 @@ var checkTokenCache = function(token, success, fail) {
 }
 
 var canFollow = function(followerID, followedID, next) {
-    //TODO: For reflexivity: INSERT INTO CanFollow (followerID, followerID)?
+    //Could INSERT INTO CanFollow (followerID, followerID) for reflexivity
     if (followerID === followedID) {
         next(true); 
     } else {
@@ -211,10 +211,6 @@ var updateTokenCache = function(id, token, expiry) {
 
 //MARK: Format RESTful params into SQL queries and send back response
 var getFromDatabase = function(id, out) {
-    // var tokenId = data[0].id;
-    // console.log("Get: ", data); //data contains name, id
-    //TODO: Assert id == tokenId 
-    // ^(may not be necessary as GET has already validated requester is friends with id)
     var query = squel
         .select()
         .from("Runner")
