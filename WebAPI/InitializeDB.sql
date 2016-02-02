@@ -14,9 +14,10 @@ FLUSH PRIVILEGES;
 USE bloomsday;
 -- RunnerID is numeric (Facebook ID), but FB API could change
 -- Create all necessary tables for database (only one to-date)
+-- Store location as varchar to avoid floating point errors
 CREATE TABLE Runner ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY,
-	Latitude float,
-	Longitude float,
+	Latitude VARCHAR(64),
+	Longitude VARCHAR(64),
 	Timestamp int );
 
 -- Run into problems if FB OAuth tokens are longer than 2048 characters
