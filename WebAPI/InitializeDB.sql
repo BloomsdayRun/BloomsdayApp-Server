@@ -20,6 +20,9 @@ CREATE TABLE Runner ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY,
 	Longitude VARCHAR(64),
 	Timestamp int );
 
+-- TODO: Should really map token to RunnerID (otherwise, perhaps scan
+-- on entire table to find particular token, and have issues with multiple runners with same token)
+--   (However, can't have a primary key >~760 bytes)
 -- Run into problems if FB OAuth tokens are longer than 2048 characters
 CREATE TABLE TokenCache ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY, 
 	Token VARCHAR(2048),

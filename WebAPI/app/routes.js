@@ -126,11 +126,19 @@ var checkTokenCache = function(token, success, fail) {
         if (err) {
             console.log("ERROR::SQL Output " + err);
             fail("ERROR::Retrieving cached ID");
-        }
-        // else if (rows.length > 1) { //Corner-case
-        //     console.log("TODO: Drop data where same token maps to different IDs");
-        // }
-        else if (rows.length == 0) { //T does not exist
+        } else if (rows.length == 0 || rows.length > 1) { 
+            //T does not exist; or T exists multiple times
+            if (rows.length > 1) {
+                //drop all duplicates
+                var dquery = squel
+                    .delete().from("TokenCache").where("Token = " + token)
+                    .toString() + ";";
+                execQuery(dquery, function(err, rows, fields) {
+                    console.log("Delete duplicated token");
+                });
+            }
+            // Due to async queries, might update TokenCache with FBGRAPH info,
+            // then delete duplicate entries (wasteful, but duplicates very unlikely)
             console.log("No such cached token");
             var graph = require('fbgraph');
             graph.get("debug_token?input_token=" + token 

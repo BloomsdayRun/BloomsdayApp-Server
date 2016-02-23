@@ -23,6 +23,6 @@
         "express-session": "~1.0.0",
 
         "supertest" : "latest"
-
     }
+
 }
