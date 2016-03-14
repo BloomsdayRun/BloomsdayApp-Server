@@ -27,6 +27,9 @@ CREATE TABLE Runner ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY,
 CREATE TABLE TokenCache ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY, 
 	Token VARCHAR(2048),
 	Expiry int );
+-- Fake Oauth token for testing
+INSERT INTO TokenCache VALUES(0, "FAKE_OAUTH_TOKEN", 2000000000);
+INSERT INTO CanFollow VALUES(926211520805768, 0);
 
 -- Can A follow B? (i.e., determine if they are Facebook friends)
 CREATE TABLE CanFollow ( FollowerID VARCHAR(255) NOT NULL, 
