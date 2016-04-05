@@ -8,6 +8,18 @@ POST (your location)
 GET (location of friend)
     id
 */
+
+// Position, tokencache, friendcache stored in memory
+// ID -> Latitude, Longitude, Timestamp
+var Runner = {};
+Runner[926211520805768] = {"Latitude": 1, "Longitude": 2, "Timestamp": 3}; //testing only
+// Token -> ID, Expiry
+var TokenCache = {};
+// FollowerID -> FollowedID
+// Assuming Set has O(1) lookups (TODO: Verify)
+var Friends = {};
+
+
 var constants = require("../config/constants");
 module.exports = function(app) {
     //TODO: Enhance security with app-secret proof
@@ -33,17 +45,11 @@ module.exports = function(app) {
             console.log(tag + "Invalid token or params");
             response.send("Invalid token or params");
         } else {
-            var get = function(target) {
-                var msg = getFromDatabase(target, function(msg) {
-                    console.log(tag, msg);
-                    response.send(msg);
-                });
-            };
-
             checkTokenCache(accessToken, function(followerId) {
                 canFollow(followerId, request.query.id, function(cached) {
                     if (cached) {
-                        get(request.query.id);
+                        console.log(tag, Runner[request.query.id]);
+                        response.send(Runner[request.query.id]);
                     } else {
                         // Check for friendship and update cache
                         var graph = require('fbgraph');
@@ -59,7 +65,8 @@ module.exports = function(app) {
                                 // graphRes.data not null -> response is nonempty (access token valid)
                                 // graphRes.data[0] not null -> users are friends
                                 updateCanFollow(followerId, graphRes.data[0].id);
-                                get(graphRes.data[0].id);
+                                graphRes.data[0].id
+                                // get(graphRes.data[0].id);
                             } else {
                                 //they must not be friends
                                 console.log(tag + "ERROR::Get non-friend or nonexistent user "
