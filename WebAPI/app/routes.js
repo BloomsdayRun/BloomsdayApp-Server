@@ -290,12 +290,13 @@ var execQuery = function(query, callback) {
     pool.getConnection(function(err, connection) {
         if (err) {
             //TODO: Better error handling here
-            console.log("Error in connection pool");
+            console.log("Error in connection pool: ", err);
+            process.exit(); 
         } else {
             connection.query(query, function(err, rows, fields) {
+                connection.release();
                 callback(err, rows, fields);
             });
-            connection.release();            
         }
     });    
 }

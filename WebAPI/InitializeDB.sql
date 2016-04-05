@@ -10,6 +10,7 @@ FLUSH PRIVILEGES;
 GRANT ALL PRIVILEGES ON bloomsday.* TO USERNAME@localhost;
 FLUSH PRIVILEGES;
 
+SET GLOBAL max_connections=1500;
 
 USE bloomsday;
 -- RunnerID is numeric (Facebook ID), but FB API could change
