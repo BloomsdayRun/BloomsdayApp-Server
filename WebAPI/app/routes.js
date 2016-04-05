@@ -136,6 +136,40 @@ var squel = require("squel").useFlavour('mysql');
 var pool = require("../config/connection.js");
 
 //MARK: Caching functions
+
+var checkTokenCache = function(token) {
+    if (TokenCache[token]) {
+        var now = new Date().getTime();
+        if (now > TokenCache[token].expiry) {
+            return false; //expired cached token
+        } else {
+            return true; //good cached token
+        }
+    } else {
+        //Check with FBGRAPH
+        var graph = require('fbgraph');
+        graph.get("debug_token?input_token=" + token 
+          + "&access_token=" + constants.facebookAuth.clientID 
+          + "|" + constants.facebookAuth.clientSecret, function(fberr, res) {
+            if (fberr) {
+                // fail("ERROR::FBERROR " + JSON.stringify(fberr) );
+                return false;
+            } else if (res.data.error) {
+                // fail("ERROR::FBERROR " + res.data.error.message);
+                return false;
+            } else {
+                var tokenId = res.data.user_id;
+                var expiry = res.data.expires_at;
+                // console.log(tokenId + " - " + expiry);
+                // updateTokenCache(tokenId, token, expiry);
+                TokenCache[tokenId] = {ID: tokenId, Expiry: expiry};
+                return true;
+            }
+        });
+    }
+}
+
+
 var checkTokenCache = function(token, success, fail) {
     var query = squel
         .select().from("TokenCache").where("Token = '" + token + "'").toString() + ";";
@@ -229,6 +263,7 @@ var updateCanFollow = function(followerID, followedID) {
     });    
 }
 
+/*
 var updateTokenCache = function(id, token, expiry) {
     var query = squel
         .insert()
@@ -243,6 +278,7 @@ var updateTokenCache = function(id, token, expiry) {
         console.log("Update token cache: " + id + " - " + token);
     });
 };
+*/
 
 //MARK: Format RESTful params into SQL queries and send back response
 var getFromDatabase = function(id, out) {
