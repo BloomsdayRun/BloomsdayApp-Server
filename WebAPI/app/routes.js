@@ -196,7 +196,7 @@ var canFollow = function(followerID, followedID, next) {
             if (err) next(false);
             if (!rows) next(false);
             // console.log(rows);
-            next(rows.length == 1);
+            next(rows.length >= 1);
         });
     }
 }
