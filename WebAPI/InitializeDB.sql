@@ -27,11 +27,15 @@ CREATE TABLE Runner ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY,
 CREATE TABLE TokenCache ( RunnerID VARCHAR(255) NOT NULL PRIMARY KEY, 
 	Token VARCHAR(2048),
 	Expiry int );
--- Fake Oauth token for testing
-INSERT INTO TokenCache VALUES(-1, "FAKE_OAUTH_TOKEN", 2000000000);
 
 -- Can A follow B? (i.e., determine if they are Facebook friends)
 CREATE TABLE CanFollow ( FollowerID VARCHAR(255) NOT NULL, 
 	FollowedID VARCHAR(255) NOT NULL );
+
+-- Initial data set
+-- Fake Oauth token for testing
+INSERT INTO TokenCache VALUES(-1, "FAKE_OAUTH_TOKEN", 2000000000);
 -- Short-circuit Facebook authentication to allow certain spectator to get ENSC data
 INSERT INTO CanFollow VALUES(926211520805768, -1);
+-- Some test GPS data
+INSERT INTO Runner VALUES (926211520805768, 1, 2, 3); 
