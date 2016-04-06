@@ -124,12 +124,13 @@ module.exports = function(app) {
                     });  
             } 
 
-            checkTokenCache(accessToken, function(id) {
+            console.log(request.query.token);
+            checkTokenCache(request.query.token, function(id) {
                 post(id);
               }, function(err) {
                 console.log(tag + err);
                 response.send(err);
-            });  
+            });
         }   
     });         
 }
