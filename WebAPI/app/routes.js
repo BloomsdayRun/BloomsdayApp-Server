@@ -38,6 +38,7 @@ module.exports = function(app) {
     //GET runner data (spectator)
     // TODO: Validate URL params on requests prior to anything else
     app.get( '/api/runner/', function(request, response) {
+        console.log(TokenCache);
         var accessToken = request.get("access-token");
         //Tag is client ip address & time request arrived
         var tag = "GET " + request.connection.remoteAddress + " " + Date.now() + " - "; 
@@ -45,42 +46,25 @@ module.exports = function(app) {
             console.log(tag + "Invalid token or params");
             response.send("Invalid token or params");
         } else {
-            checkTokenCache(accessToken, function(followerId) {
-                canFollow(followerId, request.query.id, function(cached) {
-                    if (cached) {
-                        console.log(tag, Runner[request.query.id]);
-                        response.send(Runner[request.query.id]);
+            var followerID = checkTokenCache(accessToken);
+            console.log(followerID);
+            if (followerID) {
+                areTheyFriends(followerID, request.query.id, accessToken, function(msg) {
+                    console.log(tag, msg);
+                    response.send(msg);
+                })
+            } else {
+                validateWithFacebook(accessToken, function(tokenId) {
+                    if (!tokenId) {
+                        response.send("ERROR::Token rejected by Facebook")
                     } else {
-                        // Check for friendship and update cache
-                        var graph = require('fbgraph');
-                        if (accessToken) graph.setAccessToken(accessToken);
-                        graph.get("me/friends/" + request.query.id, function(err, graphRes) {
-                            //Check if user is friends with id by seeing if query is non-empty
-                            //TODO: Find a more robust way to do this
-                            if (err) {
-                                console.log(tag + "ERROR::FBAUTH error on get (expired token?)");
-                                response.send("ERROR::FBAUTH error on get (expired token?)");
-                            } else if (graphRes && graphRes.data && graphRes.data[0]) { 
-                                // graphRes not null -> response from Facebook
-                                // graphRes.data not null -> response is nonempty (access token valid)
-                                // graphRes.data[0] not null -> users are friends
-                                updateCanFollow(followerId, graphRes.data[0].id);
-                                graphRes.data[0].id
-                                // get(graphRes.data[0].id);
-                            } else {
-                                //they must not be friends
-                                console.log(tag + "ERROR::Get non-friend or nonexistent user "
-                                    + JSON.stringify(graphRes));
-                                response.send("ERROR::Get non-friend or nonexistent user "
-                                    + JSON.stringify(graphRes));
-                            }
-                        });                    
+                        areTheyFriends(followerID, request.query.id, accessToken, function(msg) {
+                            console.log(tag, msg);
+                            response.send(msg);
+                        })
                     }
-                });
-            },
-            function(err) {
-                response.send(err);
-            });            
+                })
+            }
         }
     });
 
@@ -103,7 +87,7 @@ module.exports = function(app) {
                     });  
             } 
 
-            checkTokenCache(accessToken, function(id) {
+            checkTokenCacheOld(accessToken, function(id) {
                 post(id);
             },
             function(err) {
@@ -112,6 +96,38 @@ module.exports = function(app) {
             });  
         }   
     });            
+}
+
+var areTheyFriends = function(followerID, followedID, accessToken, next) {
+    if (!Friends[followerID]) {
+        Friends[followerID] = new Set();
+    }
+    if (Friends[followerID].has(followedID)) {
+        next(Runner[followedID]);
+    } else {
+        // Check for friendship and update cache
+        var graph = require('fbgraph');
+        if (accessToken) graph.setAccessToken(accessToken);
+        graph.get("me/friends/" + followedID, function(err, graphRes) {
+            //Check if user is friends with id by seeing if query is non-empty
+            //TODO: Find a more robust way to do this
+            if (err) {
+                next("ERROR::FBAUTH error on get (expired token?)");
+            } else if (graphRes && graphRes.data && graphRes.data[0]) { 
+                // graphRes not null -> response from Facebook
+                // graphRes.data not null -> response is nonempty (access token valid)
+                // graphRes.data[0] not null -> users are friends
+                // updateCanFollow(followerId, graphRes.data[0].id);
+                Friends[followerID].add(graphRes.data[0].id);
+                // graphRes.data[0].id
+                next(Runner[graphRes.data[0].id]);
+            } else {
+                //they must not be friends
+                next("ERROR::Get non-friend or nonexistent user "
+                    + JSON.stringify(graphRes));
+            }
+        });
+    }
 }
 
 //MARK: Request parameter validation
@@ -141,36 +157,43 @@ var checkTokenCache = function(token) {
     if (TokenCache[token]) {
         var now = new Date().getTime();
         if (now > TokenCache[token].expiry) {
-            return false; //expired cached token
+            console.log("Expired");
+            return undefined; //expired cached token
         } else {
-            return true; //good cached token
+            return TokenCache[token].ID; //good cached token
         }
     } else {
-        //Check with FBGRAPH
-        var graph = require('fbgraph');
-        graph.get("debug_token?input_token=" + token 
-          + "&access_token=" + constants.facebookAuth.clientID 
-          + "|" + constants.facebookAuth.clientSecret, function(fberr, res) {
-            if (fberr) {
-                // fail("ERROR::FBERROR " + JSON.stringify(fberr) );
-                return false;
-            } else if (res.data.error) {
-                // fail("ERROR::FBERROR " + res.data.error.message);
-                return false;
-            } else {
-                var tokenId = res.data.user_id;
-                var expiry = res.data.expires_at;
-                // console.log(tokenId + " - " + expiry);
-                // updateTokenCache(tokenId, token, expiry);
-                TokenCache[tokenId] = {ID: tokenId, Expiry: expiry};
-                return true;
-            }
-        });
+        return undefined;
     }
+    console.log("End of function");
 }
 
+var validateWithFacebook = function(token, next) {
+    //Check with FBGRAPH
+    var graph = require('fbgraph');
+    graph.get("debug_token?input_token=" + token 
+      + "&access_token=" + constants.facebookAuth.clientID 
+      + "|" + constants.facebookAuth.clientSecret, function(fberr, res) {
+        if (fberr) {
+            console.log("ERROR::FBERROR " + JSON.stringify(fberr) );
+            // fail("ERROR::FBERROR " + JSON.stringify(fberr) );
+            next(undefined);
+        } else if (res.data.error) {
+            console.log("ERROR::FBERROR " + res.data.error.message );
+            // fail("ERROR::FBERROR " + res.data.error.message);
+            next(undefined);
+        } else {
+            var tokenId = res.data.user_id;
+            var expiry = res.data.expires_at;
+            // console.log(tokenId + " - " + expiry);
+            // updateTokenCache(tokenId, token, expiry);
+            TokenCache[token] = {ID: tokenId, Expiry: expiry};
+            next(tokenId);
+        }
+    });
+}
 
-var checkTokenCache = function(token, success, fail) {
+var checkTokenCacheOld = function(token, success, fail) {
     var query = squel
         .select().from("TokenCache").where("Token = '" + token + "'").toString() + ";";
     // console.log(query);
