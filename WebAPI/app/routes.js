@@ -104,7 +104,34 @@ module.exports = function(app) {
                 response.send(err);
             });  
         }   
-    });            
+    });
+
+    // POST for embedded device (no headers)
+    app.post( '/api/runner/ensc/', function(request, response) {
+        var tag = "POST " + request.connection.remoteAddress + " " + Date.now() + " - ";
+        if (!validatePost(request.query.token, request.query.latitude, 
+          request.query.longitude, request.query.timestamp)) {
+            console.log(tag + "Invalid token or params");
+            response.send("Invalid token or params");
+        } else {
+            var post = function(id) {
+                postToDatabase(id,
+                    request.query.latitude,
+                    request.query.longitude,
+                    request.query.timestamp, function(msg) {
+                        console.log(tag, msg);
+                        response.send(msg);
+                    });  
+            } 
+
+            checkTokenCache(accessToken, function(id) {
+                post(id);
+              }, function(err) {
+                console.log(tag + err);
+                response.send(err);
+            });  
+        }   
+    });         
 }
 
 //MARK: Request parameter validation
