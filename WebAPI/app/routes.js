@@ -12,7 +12,7 @@ GET (location of friend)
 // Position, tokencache, friendcache stored in memory
 // ID -> Latitude, Longitude, Timestamp
 var Runner = {};
-Runner[926211520805768] = {"Latitude": 1, "Longitude": 2, "Timestamp": 3}; //testing only
+Runner[926211520805768] = {"Latitude": 37.32475605, "Longitude": -122.02254174, "Timestamp": 1459881707}; //testing only
 // Token -> ID, Expiry
 var TokenCache = {};
 // FollowerID -> FollowedID
@@ -104,6 +104,7 @@ module.exports = function(app) {
 }
 
 var areTheyFriends = function(followerID, followedID, accessToken, next) {
+    //If follower has no entries in Friends cache, create a new one
     if (!Friends[followerID]) {
         Friends[followerID] = new Set();
     }
@@ -122,10 +123,15 @@ var areTheyFriends = function(followerID, followedID, accessToken, next) {
                 // graphRes not null -> response from Facebook
                 // graphRes.data not null -> response is nonempty (access token valid)
                 // graphRes.data[0] not null -> users are friends
-                // updateCanFollow(followerId, graphRes.data[0].id);
-                Friends[followerID].add(graphRes.data[0].id);
-                // graphRes.data[0].id
-                next(Runner[graphRes.data[0].id]);
+                var id = graphRes.data[0].id;
+                Friends[followerID].add(id);
+                var raw = Runner[id];
+                var res = {"RunnerID": id, 
+                      "Latitude": raw.Latitude,
+                      "Longitude": raw.Longitude,
+                      "Timestamp": raw.Timestamp                    
+                      }
+                next(res);
             } else {
                 //they must not be friends
                 next("ERROR::Get non-friend or nonexistent user "
@@ -153,11 +159,7 @@ var validatePost = function(accessToken, latitude, longitude, timestamp) {
     }    
 }
 
-var squel = require("squel").useFlavour('mysql');
-var pool = require("../config/connection.js");
-
 //MARK: Caching functions
-
 var checkTokenCache = function(token) {
     if (TokenCache[token]) {
         var now = new Date().getTime();
@@ -181,193 +183,15 @@ var validateWithFacebook = function(token, next) {
       + "|" + constants.facebookAuth.clientSecret, function(fberr, res) {
         if (fberr) {
             console.log("ERROR::FBERROR " + JSON.stringify(fberr) );
-            // fail("ERROR::FBERROR " + JSON.stringify(fberr) );
             next(undefined);
         } else if (res.data.error) {
             console.log("ERROR::FBERROR " + res.data.error.message );
-            // fail("ERROR::FBERROR " + res.data.error.message);
             next(undefined);
         } else {
             var tokenId = res.data.user_id;
             var expiry = res.data.expires_at;
-            // console.log(tokenId + " - " + expiry);
-            // updateTokenCache(tokenId, token, expiry);
             TokenCache[token] = {ID: tokenId, Expiry: expiry};
             next(tokenId);
         }
     });
-}
-
-var checkTokenCacheOld = function(token, success, fail) {
-    var query = squel
-        .select().from("TokenCache").where("Token = '" + token + "'").toString() + ";";
-    // console.log(query);
-    execQuery(query, function(err, rows, fields) {
-        if (err) {
-            // console.log("ERROR::SQL Output " + err);
-            fail("ERROR::Retrieving cached ID");
-        } else if (rows.length == 0 || rows.length > 1) { 
-            //T does not exist; or T exists multiple times
-            if (rows.length > 1) {
-                //drop all duplicates
-                var dquery = squel
-                    .delete().from("TokenCache").where("Token = " + token)
-                    .toString() + ";";
-                execQuery(dquery, function(err, rows, fields) {
-                    // console.log("Delete duplicated token");
-                });
-            }
-            // Due to async queries, might update TokenCache with FBGRAPH info,
-            // then delete duplicate entries (wasteful, but duplicates very unlikely)
-            // console.log("No such cached token");
-            var graph = require('fbgraph');
-            graph.get("debug_token?input_token=" + token 
-              + "&access_token=" + constants.facebookAuth.clientID 
-              + "|" + constants.facebookAuth.clientSecret, function(fberr, res) {
-                if (fberr) {
-                    fail("ERROR::FBERROR " + JSON.stringify(fberr) );
-                } else if (res.data.error) {
-                    fail("ERROR::FBERROR " + res.data.error.message);
-                } else {
-                    var tokenId = res.data.user_id;
-                    var expiry = res.data.expires_at;
-                    // console.log(tokenId + " - " + expiry);
-                    updateTokenCache(tokenId, token, expiry);
-                    success(tokenId);        
-                }
-            });      
-        } else { //T does exist
-            cached = rows[0];
-            // console.log("Retrieve cached token: ", cached);
-            var now = new Date().getTime();
-            if (now > cached.expiry) {
-                //TODO: Maybe token expires for User A, and Facebook reissues token to B
-                // (could fix client side - ask for new token if getting expired message)
-                fail("ERROR::Your token expired at " + cached.expiry); 
-            } else {
-                success(cached.RunnerID);
-            }
-        }    
-    });
-}
-
-var canFollow = function(followerID, followedID, next) {
-    //Could INSERT INTO CanFollow (followerID, followerID) for reflexivity
-    if (followerID === followedID) {
-        next(true); 
-    } else {
-        var query = squel
-            .select().from("CanFollow").where("FollowerID = " + followerID)
-            .where("FollowedID = " + followedID)
-            .toString() + ";";
-        // console.log(query);
-        execQuery(query, function(err, rows, fields) {
-            if (err) next(false);
-            if (!rows) next(false);
-            // console.log(rows);
-            next(rows.length >= 1);
-        });
-    }
-}
-
-/* TODO: Race-condition; sending multiple GETs with a new friend relation can cause each
-request to add the same data to CanFollow; e.g. if A tries to follow 
-friend B for the first time, then the server will:
-(1) not see the relation in the table
-(2) validate with FBGRAPH
-(3) add (A,B) to CanFollow (potentially hundreds of duplicates if requests are concurrent)
-
-(Only a problem for stress-testing or malicious use)
-*/
-var updateCanFollow = function(followerID, followedID) {
-    var query = squel
-        .insert()
-        .into("CanFollow")
-        .set("FollowerID", followerID)
-        .set("FollowedID", followedID)
-        .toString() + ";";
-    execQuery(query, function(err, rows, fields) {
-        console.log("Update CanFollow: " + followerID + " - " + followedID);
-    });    
-}
-
-/*
-var updateTokenCache = function(id, token, expiry) {
-    var query = squel
-        .insert()
-        .into("TokenCache")
-        .set("RunnerID", id)
-        .set("Token", token)
-        .set("Expiry", expiry)
-        .onDupUpdate("Token", token)
-        .onDupUpdate("Expiry", expiry)
-        .toString() + ";";
-    execQuery(query, function(err, rows, fields) {
-        console.log("Update token cache: " + id + " - " + token);
-    });
-};
-*/
-
-//MARK: Format RESTful params into SQL queries and send back response
-var getFromDatabase = function(id, out) {
-    var query = squel
-        .select()
-        .from("Runner")
-        .where("RunnerID = " + id)
-        .toString() + ";";
-    // console.log(query);
-
-    execQuery(query, function(err, rows, fields) {
-        if (err) {
-            //TODO: More consistent error messages
-            out("ERROR::SQL Output " + err);
-            // throw err; //throwing shuts down server
-        } else {
-            if (rows[0]) { //i.e., if the response is not null/undefined
-                // console.log('Retrieved ', rows[0]);     
-                out(rows[0]);
-            } else {
-                out("ERROR::DBMS attempt to access user with no defined location");
-            }
-        }
-    });
-}
-
-var postToDatabase = function(id, latitude, longitude, timestamp, out) {
-    var query = squel
-        .insert()
-        .into("Runner")
-        .set("RunnerID", id)
-        .set("Latitude", latitude)
-        .set("Longitude", longitude)
-        .set("TimeStamp", timestamp)
-        .onDupUpdate("Latitude", latitude)
-        .onDupUpdate("Longitude", longitude)
-        .onDupUpdate("TimeStamp", timestamp)
-        .toString() + ";";
-
-    // console.log(query);
-    execQuery(query, function(err, rows, fields) {
-        if (err) {
-            out("ERROR::DBMS error when posting::" + err);
-        } else {
-            out("POST_SUCCESS");
-        }
-    });
-}
-
-// Get a connection from the pool, and call callback upon query
-var execQuery = function(query, callback) {
-    pool.getConnection(function(err, connection) {
-        if (err) {
-            //TODO: Better error handling here
-            console.log("Error in connection pool: ", err);
-            process.exit(); 
-        } else {
-            connection.query(query, function(err, rows, fields) {
-                connection.release();
-                callback(err, rows, fields);
-            });
-        }
-    });    
 }
