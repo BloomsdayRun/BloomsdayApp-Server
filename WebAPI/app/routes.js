@@ -38,7 +38,9 @@ module.exports = function(app) {
     //GET runner data (spectator)
     // TODO: Validate URL params on requests prior to anything else
     app.get( '/api/runner/', function(request, response) {
-        console.log(TokenCache);
+        console.log("Tkache", TokenCache);
+        console.log("Runner", Runner);
+        console.log("Friends", Friends);
         var accessToken = request.get("access-token");
         //Tag is client ip address & time request arrived
         var tag = "GET " + request.connection.remoteAddress + " " + Date.now() + " - "; 
@@ -69,7 +71,6 @@ module.exports = function(app) {
     });
 
     // POST runner data (runner)
-    //TODO: Fix this route
     app.post( '/api/runner/', function(request, response) {
         var accessToken = request.get("access-token");
         var tag = "POST " + request.connection.remoteAddress + " " + Date.now() + " - ";
@@ -90,7 +91,7 @@ module.exports = function(app) {
                     if (!tokenId) {
                         response.send("ERROR::Token rejected by Facebook")
                     } else {
-                        Runner[id] = {"Latitude": request.query.latitude, 
+                        Runner[tokenId] = {"Latitude": request.query.latitude, 
                           "Longitude": request.query.longitude,
                           "Timestamp": request.query.timestamp};
                         console.log(tag, "POST_SUCCESS");
