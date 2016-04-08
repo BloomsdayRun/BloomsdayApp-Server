@@ -69,6 +69,7 @@ module.exports = function(app) {
     });
 
     // POST runner data (runner)
+    //TODO: Fix this route
     app.post( '/api/runner/', function(request, response) {
         var accessToken = request.get("access-token");
         var tag = "POST " + request.connection.remoteAddress + " " + Date.now() + " - ";
@@ -77,23 +78,26 @@ module.exports = function(app) {
             console.log(tag + "Invalid token or params");
             response.send("Invalid token or params");
         } else {
-            var post = function(id) {
-                postToDatabase(id,
-                    request.query.latitude,
-                    request.query.longitude,
-                    request.query.timestamp, function(msg) {
-                        console.log(tag, msg);
-                        response.send(msg);
-                    });  
-            } 
-
-            checkTokenCacheOld(accessToken, function(id) {
-                post(id);
-            },
-            function(err) {
-                console.log(tag + err);
-                response.send(err);
-            });  
+            var id = checkTokenCache(accessToken);
+            if (id) {
+                Runner[id] = {"Latitude": request.query.latitude, 
+                  "Longitude": request.query.longitude,
+                  "Timestamp": request.query.timestamp};
+                console.log(tag, "POST_SUCCESS");
+                response.send("POST_SUCCESS");
+            } else {
+                validateWithFacebook(accessToken, function(tokenId) {
+                    if (!tokenId) {
+                        response.send("ERROR::Token rejected by Facebook")
+                    } else {
+                        Runner[id] = {"Latitude": request.query.latitude, 
+                          "Longitude": request.query.longitude,
+                          "Timestamp": request.query.timestamp};
+                        console.log(tag, "POST_SUCCESS");
+                        response.send("POST_SUCCESS");
+                    }
+                })
+            }
         }   
     });            
 }
