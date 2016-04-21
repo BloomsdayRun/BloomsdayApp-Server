@@ -38,21 +38,21 @@ module.exports = function(app) {
     //GET runner data (spectator)
     // TODO: Validate URL params on requests prior to anything else
     app.get( '/api/runner/', function(request, response) {
-        console.log("Tkache", TokenCache);
-        console.log("Runner", Runner);
-        console.log("Friends", Friends);
+        // console.log("Tkache", TokenCache);
+        // console.log("Runner", Runner);
+        // console.log("Friends", Friends);
         var accessToken = request.get("access-token");
         //Tag is client ip address & time request arrived
         var tag = "GET " + request.connection.remoteAddress + " " + Date.now() + " - "; 
         if (!validateGet(accessToken, request.query.id)) {
-            console.log(tag + "Invalid token or params");
+            // console.log(tag + "Invalid token or params");
             response.send("Invalid token or params");
         } else {
             var followerID = checkTokenCache(accessToken);
-            console.log(followerID);
+            // console.log(followerID);
             if (followerID) {
                 areTheyFriends(followerID, request.query.id, accessToken, function(msg) {
-                    console.log(tag, msg);
+                    // console.log(tag, msg);
                     response.send(msg);
                 })
             } else {
@@ -60,8 +60,8 @@ module.exports = function(app) {
                     if (!tokenId) {
                         response.send("ERROR::Token rejected by Facebook")
                     } else {
-                        areTheyFriends(followerID, request.query.id, accessToken, function(msg) {
-                            console.log(tag, msg);
+                        areTheyFriends(tokenId, request.query.id, accessToken, function(msg) {
+                            // console.log(tag, msg);
                             response.send(msg);
                         })
                     }
@@ -76,7 +76,7 @@ module.exports = function(app) {
         var tag = "POST " + request.connection.remoteAddress + " " + Date.now() + " - ";
         if (!validatePost(accessToken, request.query.latitude, 
           request.query.longitude, request.query.timestamp)) {
-            console.log(tag + "Invalid token or params");
+            // console.log(tag + "Invalid token or params");
             response.send("Invalid token or params");
         } else {
             var id = checkTokenCache(accessToken);
@@ -84,7 +84,7 @@ module.exports = function(app) {
                 Runner[id] = {"Latitude": request.query.latitude, 
                   "Longitude": request.query.longitude,
                   "Timestamp": request.query.timestamp};
-                console.log(tag, "POST_SUCCESS");
+                // console.log(tag, "POST_SUCCESS");
                 response.send("POST_SUCCESS");
             } else {
                 validateWithFacebook(accessToken, function(tokenId) {
@@ -94,7 +94,7 @@ module.exports = function(app) {
                         Runner[tokenId] = {"Latitude": request.query.latitude, 
                           "Longitude": request.query.longitude,
                           "Timestamp": request.query.timestamp};
-                        console.log(tag, "POST_SUCCESS");
+                        // console.log(tag, "POST_SUCCESS");
                         response.send("POST_SUCCESS");
                     }
                 })
@@ -109,7 +109,7 @@ var areTheyFriends = function(followerID, followedID, accessToken, next) {
         Friends[followerID] = new Set();
     }
     if (Friends[followerID].has(followedID)) {
-        next(Runner[followedID]);
+        next(runnerAsJSON(followedID));
     } else {
         // Check for friendship and update cache
         var graph = require('fbgraph');
@@ -125,13 +125,7 @@ var areTheyFriends = function(followerID, followedID, accessToken, next) {
                 // graphRes.data[0] not null -> users are friends
                 var id = graphRes.data[0].id;
                 Friends[followerID].add(id);
-                var raw = Runner[id];
-                var res = {"RunnerID": id, 
-                      "Latitude": raw.Latitude,
-                      "Longitude": raw.Longitude,
-                      "Timestamp": raw.Timestamp                    
-                      }
-                next(res);
+                next(runnerAsJSON(id));
             } else {
                 //they must not be friends
                 next("ERROR::Get non-friend or nonexistent user "
@@ -139,6 +133,16 @@ var areTheyFriends = function(followerID, followedID, accessToken, next) {
             }
         });
     }
+}
+
+var runnerAsJSON = function(id) {
+    var raw = Runner[id];
+    var res = {"RunnerID": id, 
+      "Latitude": raw.Latitude,
+      "Longitude": raw.Longitude,
+      "Timestamp": raw.Timestamp
+    }
+    return res;
 }
 
 //MARK: Request parameter validation
@@ -164,7 +168,7 @@ var checkTokenCache = function(token) {
     if (TokenCache[token]) {
         var now = new Date().getTime();
         if (now > TokenCache[token].expiry) {
-            console.log("Expired");
+            // console.log("Expired");
             return undefined; //expired cached token
         } else {
             return TokenCache[token].ID; //good cached token
@@ -172,7 +176,6 @@ var checkTokenCache = function(token) {
     } else {
         return undefined;
     }
-    console.log("End of function");
 }
 
 var validateWithFacebook = function(token, next) {
@@ -182,10 +185,10 @@ var validateWithFacebook = function(token, next) {
       + "&access_token=" + constants.facebookAuth.clientID 
       + "|" + constants.facebookAuth.clientSecret, function(fberr, res) {
         if (fberr) {
-            console.log("ERROR::FBERROR " + JSON.stringify(fberr) );
+            // console.log("ERROR::FBERROR " + JSON.stringify(fberr) );
             next(undefined);
         } else if (res.data.error) {
-            console.log("ERROR::FBERROR " + res.data.error.message );
+            // console.log("ERROR::FBERROR " + res.data.error.message );
             next(undefined);
         } else {
             var tokenId = res.data.user_id;

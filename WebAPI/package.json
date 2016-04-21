@@ -1,28 +1,17 @@
 {
     "name" : "BloomsdayAppServer",
-    "version" : "0.0.1",
+    "version" : "0.0.2",
     "description" : "Send and receive GPS data",
     "main" : "AWSServer.js",
     "dependencies" : {
         "express" : "^4.13.3",
         "ejs" : "~0.8.5",
-        "node-mysql" : "~0.4.2",
-        "mysql" : "*",
-        "squel" : "4.2.2",
-
-        "passport" : "~0.1.17", 
-        "passport-facebook" : "~1.0.2",
-        "connect-flash" : "~0.1.1",     
-        "bcrypt-nodejs" : "latest",
         "fbgraph" : "latest",
-
         "morgan": "~1.0.0",
         "body-parser": "~1.0.0",
-        "cookie-parser": "~1.0.0",
-        "method-override": "~1.0.0",
-        "express-session": "~1.0.0",
-
-        "supertest" : "latest"
+        
+        "https": "latest",
+        "fs": "latest"
     }
 
 }

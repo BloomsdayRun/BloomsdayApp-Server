@@ -1,0 +1,21 @@
+git clone https://github.com/letsencrypt/letsencrypt
+cd letsencrypt
+./letsencrypt-auto certonly
+# move the certs to the webserver directory
+
+# add these lines to AWSServer.js
+var fs = require('fs');
+var https = require('https');
+var path = require('path');
+var keypath = path.join(__dirname, 'lilac12k.info/privkey.pem')
+var certpath = path.join(__dirname, 'lilac12k.info/fullchain.pem')
+var capath = path.join(__dirname, 'lilac12k.info/chain.pem')
+
+var options = {
+key: fs.readFileSync(keypath),
+cert: fs.readFileSync(certpath),
+ca: fs.readFileSync(capath)
+}
+
+var httpsServer = https.createServer(options, app);
+httpsServer.listen(8080);
