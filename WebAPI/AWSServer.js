@@ -10,7 +10,7 @@ var morgan     = require('morgan'); //post/get messages -> console
 //EJS allows embedded Javascript in pages
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
-// app.use(morgan('dev')); //uncomment to log requests
+app.use(morgan('short', {})); //uncomment to log requests
 
 //Parses the body of HTTP requests
 app.use(bodyParser.urlencoded({

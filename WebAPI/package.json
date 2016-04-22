@@ -7,9 +7,9 @@
         "express" : "^4.13.3",
         "ejs" : "~0.8.5",
         "fbgraph" : "latest",
-        "morgan": "~1.0.0",
+        "morgan": "latest",
         "body-parser": "~1.0.0",
-        
+
         "https": "latest",
         "fs": "latest"
     }

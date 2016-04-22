@@ -7,24 +7,25 @@ POST (your location)
     timestamp
 GET (location of friend)
     id
+
+-> Cache friends and tokens because >600 graph requests per second is forbidden
+-> Would be nice to enhance security with app-secret proof:
+  https://developers.facebook.com/docs/graph-api/securing-requests
 */
 
 // Position, tokencache, friendcache stored in memory
 // ID -> Latitude, Longitude, Timestamp
 var Runner = {};
-Runner[926211520805768] = {"Latitude": 37.32475605, "Longitude": -122.02254174, "Timestamp": 1459881707}; //testing only
+// Runner[926211520805768] = {"Latitude": 37.32475605, "Longitude": -122.02254174, "Timestamp": 1459881707}; //testing only
 // Token -> ID, Expiry
 var TokenCache = {};
-// FollowerID -> FollowedID
+// FollowerID -> Set(FollowedID...)
 // Assuming Set has O(1) lookups (TODO: Verify)
 var Friends = {};
 
 
 var constants = require("../config/constants");
 module.exports = function(app) {
-    //TODO: Enhance security with app-secret proof
-    //TODO: Consistent logging
-    //TODO: Ensure caching works (can't do more than ~600 graph requests per second)
 
     //home page
     app.get( '/', function(request, response) {
@@ -33,10 +34,9 @@ module.exports = function(app) {
         });
     });
 
-    //MARK: RESTful API routes
+    //MARK: REST API routes
     //Route different requests to different dbms actions
     //GET runner data (spectator)
-    // TODO: Validate URL params on requests prior to anything else
     app.get( '/api/runner/', function(request, response) {
         // console.log("Tkache", TokenCache);
         // console.log("Runner", Runner);
@@ -58,12 +58,12 @@ module.exports = function(app) {
             } else {
                 validateWithFacebook(accessToken, function(tokenId) {
                     if (!tokenId) {
-                        response.send("ERROR::Token rejected by Facebook")
+                        response.send("ERROR::Token rejected by Facebook");
                     } else {
                         areTheyFriends(tokenId, request.query.id, accessToken, function(msg) {
-                            // console.log(tag, msg);
+                            console.log("Hey");
                             response.send(msg);
-                        })
+                        });
                     }
                 })
             }
@@ -104,6 +104,10 @@ module.exports = function(app) {
 }
 
 var areTheyFriends = function(followerID, followedID, accessToken, next) {
+    if (followerID == followedID) {
+        next(runnerAsJSON(followedID));
+        return;
+    }
     //If follower has no entries in Friends cache, create a new one
     if (!Friends[followerID]) {
         Friends[followerID] = new Set();
@@ -137,15 +141,20 @@ var areTheyFriends = function(followerID, followedID, accessToken, next) {
 
 var runnerAsJSON = function(id) {
     var raw = Runner[id];
-    var res = {"RunnerID": id, 
-      "Latitude": raw.Latitude,
-      "Longitude": raw.Longitude,
-      "Timestamp": raw.Timestamp
+    if (!raw) {
+        return "ERROR::DBMS attempt to access user with no defined location"
+    } else {
+        var res = {"RunnerID": id, 
+          "Latitude": raw.Latitude,
+          "Longitude": raw.Longitude,
+          "Timestamp": raw.Timestamp
+        }
+        return res;
     }
-    return res;
 }
 
 //MARK: Request parameter validation
+//Token has no spaces, id/lat/long/ts are numeric
 var validateGet = function(accessToken, id) {
     if (accessToken && id) {
         return (!(isNaN(id)) && accessToken.split(" ").length == 1);
@@ -168,20 +177,19 @@ var checkTokenCache = function(token) {
     if (TokenCache[token]) {
         var now = new Date().getTime();
         if (now > TokenCache[token].expiry) {
-            // console.log("Expired");
             return undefined; //expired cached token
         } else {
             return TokenCache[token].ID; //good cached token
         }
     } else {
-        return undefined;
+        return undefined; //token not in cache
     }
 }
 
 var validateWithFacebook = function(token, next) {
-    //Check with FBGRAPH
+    //Check with FBGRAPH to determine token validity
     var graph = require('fbgraph');
-    graph.get("debug_token?input_token=" + token 
+    graph.get("debug_token?input_token=" + token
       + "&access_token=" + constants.facebookAuth.clientID 
       + "|" + constants.facebookAuth.clientSecret, function(fberr, res) {
         if (fberr) {
