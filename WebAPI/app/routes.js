@@ -45,14 +45,11 @@ module.exports = function(app) {
         //Tag is client ip address & time request arrived
         var tag = "GET " + request.connection.remoteAddress + " " + Date.now() + " - "; 
         if (!validateGet(accessToken, request.query.id)) {
-            // console.log(tag + "Invalid token or params");
             response.send("Invalid token or params");
         } else {
             var followerID = checkTokenCache(accessToken);
-            // console.log(followerID);
             if (followerID) {
                 areTheyFriends(followerID, request.query.id, accessToken, function(msg) {
-                    // console.log(tag, msg);
                     response.send(msg);
                 })
             } else {
@@ -61,7 +58,6 @@ module.exports = function(app) {
                         response.send("ERROR::Token rejected by Facebook");
                     } else {
                         areTheyFriends(tokenId, request.query.id, accessToken, function(msg) {
-                            console.log("Hey");
                             response.send(msg);
                         });
                     }
@@ -101,6 +97,20 @@ module.exports = function(app) {
             }
         }   
     });            
+}
+
+//MARK: Caching functions
+var checkTokenCache = function(token) {
+    if (TokenCache[token]) {
+        var now = new Date().getTime();
+        if (now > TokenCache[token].expiry) {
+            return undefined; //expired cached token
+        } else {
+            return TokenCache[token].ID; //good cached token
+        }
+    } else {
+        return undefined; //token not in cache
+    }
 }
 
 var areTheyFriends = function(followerID, followedID, accessToken, next) {
@@ -170,20 +180,6 @@ var validatePost = function(accessToken, latitude, longitude, timestamp) {
     } else {
         return false;
     }    
-}
-
-//MARK: Caching functions
-var checkTokenCache = function(token) {
-    if (TokenCache[token]) {
-        var now = new Date().getTime();
-        if (now > TokenCache[token].expiry) {
-            return undefined; //expired cached token
-        } else {
-            return TokenCache[token].ID; //good cached token
-        }
-    } else {
-        return undefined; //token not in cache
-    }
 }
 
 var validateWithFacebook = function(token, next) {
