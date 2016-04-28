@@ -96,7 +96,30 @@ module.exports = function(app) {
                 })
             }
         }   
-    });            
+    });
+
+    // POST for embedded device (no headers)
+    app.post( '/api/runner/ensc/', function(request, response) {
+        var accessToken = request.query.token;
+        var id = checkTokenCache(accessToken);
+        if (id) {
+            Runner[id] = {"Latitude": request.query.latitude, 
+              "Longitude": request.query.longitude,
+              "Timestamp": request.query.timestamp};
+            response.send("POST_SUCCESS");
+        } else { //don't bother FB validation on embedded system route
+            response.send("POST_FAIL");
+        }  
+    });
+
+    //Log caches for debugging 
+    app.post( '/api/admin/log', function(request, response) {
+        console.log(Runner);
+        console.log(TokenCache);
+        console.log(Friends);
+        response.send("Logged");
+    });
+
 }
 
 //MARK: Caching functions
@@ -157,7 +180,7 @@ var runnerAsJSON = function(id) {
         var res = {"RunnerID": id, 
           "Latitude": raw.Latitude,
           "Longitude": raw.Longitude,
-          "Timestamp": raw.Timestamp
+          "Timestamp": Number(raw.Timestamp)
         }
         return res;
     }
